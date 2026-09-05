@@ -1,6 +1,6 @@
 # Yukai — Where stillness reveals the unseen
 
-A five-chapter night walk through a Kyoto mountain temple, rendered live in WebGL.
+A five-chapter night walk up a Kyoto mountain temple, rendered live in WebGL.
 
 Single `index.html`. No build step, no framework. Three.js r150 is vendored
 alongside it, so the page runs offline straight from the filesystem.
