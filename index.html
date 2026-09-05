@@ -309,6 +309,26 @@ body.no-gl .word-fb{display:block}
 }
 .card-ar svg{width:13px;height:13px}
 .card:hover .card-ar{opacity:1;transform:none}
+/* The three field notes are photographs, not live viewports. A scissored
+   camera on the same low-poly sanctuary can never carry the weight these
+   stills do, and the original leans on them for exactly that reason. */
+.card:nth-child(1) .card-fr{
+  background:linear-gradient(180deg,rgba(3,6,9,.04) 36%,rgba(3,6,9,.72) 100%),
+    url('kage-approach.webp') center / cover no-repeat;
+}
+.card:nth-child(2) .card-fr{
+  background:linear-gradient(180deg,rgba(3,6,9,.06) 36%,rgba(3,6,9,.74) 100%),
+    url('kage-lantern-court.webp') center / cover no-repeat;
+}
+.card:nth-child(3) .card-fr{
+  background:linear-gradient(180deg,rgba(3,6,9,.05) 36%,rgba(3,6,9,.74) 100%),
+    url('kage-moonwater.webp') center / cover no-repeat;
+}
+.peek-fr{
+  background:linear-gradient(180deg,rgba(3,6,9,.04) 24%,rgba(3,6,9,.48) 100%),
+    url('kage-sanmon-preview.webp') center / cover no-repeat;
+}
+
 /* the warm breathing pool each card sits in — stands in for a bloom pass */
 .card-fr .glow{
   position:absolute;left:var(--gx);top:var(--gy);width:0;height:0;pointer-events:none;
@@ -691,7 +711,7 @@ body.no-gl .word-fb{display:block}
     </div>
   </div>
 
-  <a class="peek" href="#pathways" data-view="3" data-rv="fade" data-cursor aria-label="Preview: Sanmon, before the bell">
+  <a class="peek" href="#pathways" data-rv="fade" data-cursor aria-label="Preview: Sanmon, before the bell">
     <span class="peek-fr" data-frame></span>
     <span class="peek-play"><svg viewBox="0 0 22 22" fill="none"><path d="M8 5.6 16.4 11 8 16.4z" fill="#dfe7e0"/></svg></span>
     <span class="peek-cap"><b class="jp">山門</b><i>Sanmon — before the bell</i></span>
@@ -747,7 +767,7 @@ body.no-gl .word-fb{display:block}
     <span class="k"><b>02</b> — Still Gardens</span><span class="rule"></span><span class="k jp">庭園</span>
   </div>
   <div class="cards" id="cards">
-    <article class="card" data-rv="up" data-view="0" data-cursor>
+    <article class="card" data-rv="up" data-cursor>
       <div class="card-fr" data-frame>
         <span class="card-ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
         <i class="glow" style="--gx:80.2%;--gy:23.9%;--gr:22px;--gt:6.1s;--gt2:9.7s;--gc1:rgba(255,142,108,.50);--gc2:rgba(212,56,38,.24)"></i>
@@ -755,7 +775,7 @@ body.no-gl .word-fb{display:block}
       </div>
       <div class="card-meta"><span>The long climb</span><span>01 / 03</span></div>
     </article>
-    <article class="card" data-rv="up" data-view="1" data-cursor>
+    <article class="card" data-rv="up" data-cursor>
       <div class="card-fr" data-frame>
         <span class="card-ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
         <i class="glow glow--flame" style="--gx:70.5%;--gy:47.2%;--gr:14px;--gt:3.7s;--gt2:5.3s;--gc1:rgba(255,198,124,.62);--gc2:rgba(226,118,40,.30)"></i>
@@ -763,7 +783,7 @@ body.no-gl .word-fb{display:block}
       </div>
       <div class="card-meta"><span>Lantern court</span><span>02 / 03</span></div>
     </article>
-    <article class="card" data-rv="up" data-view="2" data-cursor>
+    <article class="card" data-rv="up" data-cursor>
       <div class="card-fr" data-frame>
         <span class="card-ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
         <i class="glow" style="--gx:48.0%;--gy:16.8%;--gr:20px;--gt:7.3s;--gt2:11.2s;--gc1:rgba(255,138,104,.52);--gc2:rgba(208,54,36,.24)"></i>
@@ -1276,12 +1296,36 @@ var TERRACE_Z = STEP_Z0 - STEP_N * STEP_RUN;        /* -20.6 */
     var base = new THREE.Mesh(new THREE.CylinderGeometry(.52,.58,.5,16), MAT.stoneD);
     base.position.set(s*SPAN, .25, Z); g.add(base);
   }
+  /* kanagu: the brass collars and caps. Real sanmon carry them at every
+     junction, and they are the only warm metal in the frame. */
+  var GOLD = new THREE.MeshStandardMaterial({ color:0xc9a24a, roughness:.34, metalness:.72 });
+  for (var b=-1;b<=1;b+=2){
+    var collarLo = new THREE.Mesh(new THREE.CylinderGeometry(.345,.40,.30,18), GOLD);
+    collarLo.position.set(b*SPAN, .78, Z); g.add(collarLo);
+    var collarHi = new THREE.Mesh(new THREE.CylinderGeometry(.315,.325,.24,18), GOLD);
+    collarHi.position.set(b*SPAN, PH*.70, Z); g.add(collarHi);
+    /* the prong that caps each pillar where the tie beam crosses it */
+    for (var q=0;q<4;q++){
+      var prong = new THREE.Mesh(new THREE.ConeGeometry(.075,.30,6), GOLD);
+      prong.position.set(b*SPAN + Math.sin(q*Math.PI/2)*.33, PH*.70,
+                         Z + Math.cos(q*Math.PI/2)*.33);
+      prong.rotation.z = -Math.sin(q*Math.PI/2)*.5;
+      prong.rotation.x =  Math.cos(q*Math.PI/2)*.5;
+      g.add(prong);
+    }
+  }
+
   /* nuki — the straight tie beam */
   var nuki = new THREE.Mesh(new THREE.BoxGeometry(SPAN*2+1.5,.44,.56), MAT.vermLit);
   nuki.position.set(0, PH*.74, Z); g.add(nuki);
   /* gakuzuka — the little post between the two beams */
   var gz = new THREE.Mesh(new THREE.BoxGeometry(.46,1.05,.46), MAT.verm);
   gz.position.set(0, PH*.83, Z); g.add(gz);
+  /* the brass band and boss on the gakuzuka */
+  var gzBand = new THREE.Mesh(new THREE.BoxGeometry(.54,.16,.54), GOLD);
+  gzBand.position.set(0, PH*.83, Z); g.add(gzBand);
+  var boss = new THREE.Mesh(new THREE.SphereGeometry(.13,12,10), GOLD);
+  boss.position.set(0, PH*.83, Z + .26); g.add(boss);
 
   /* kasagi + shimaki: 15 short segments laid along a shallow parabola,
      each rotated to the local tangent so the beam reads as one curve */
@@ -1299,6 +1343,13 @@ var TERRACE_Z = STEP_Z0 - STEP_N * STEP_RUN;        /* -20.6 */
     cap.position.set(x, y+.30, Z);
     cap.rotation.z = Math.atan(dy);
     g.add(cap);
+    /* brass end-caps close the sweep at both tips */
+    if (i === 0 || i === SEGS-1){
+      var tip = new THREE.Mesh(new THREE.BoxGeometry(.16,.68,1.14), GOLD);
+      tip.position.set(x + (i ? .30 : -.30), y + .16, Z);
+      tip.rotation.z = Math.atan(dy);
+      g.add(tip);
+    }
   }
   WORLD.add(g);
 })();
@@ -1733,12 +1784,12 @@ function stepWeather(t, dt){
    the eye, one for the target) so the walk never snaps between chapters.
    ===================================================================== */
 var CAM = [
-  { p:[  0.0, 4.05, 13.6 ], t:[  0.0,  6.60, -18.0 ], fov:36 },  /* 00 hero        */
-  { p:[ -5.6, 2.35, 11.6 ], t:[  1.2,  5.60, -14.0 ], fov:48 },  /* 01 the sanmon  */
-  { p:[  1.6, 3.80,   4.6 ], t:[ -0.6,  7.50, -22.0 ], fov:40 },  /* 02 gardens     */
-  { p:[  6.2, 2.60,   1.2 ], t:[ -2.2,  7.20, -20.0 ], fov:46 },  /* 03 craft       */
-  { p:[  0.0, 6.40,  15.5 ], t:[  0.0,  9.60, -32.0 ], fov:40 }, /* 04 afterlight  */
-  { p:[  0.0, 13.5,   7.0 ], t:[  0.0,  2.20, -28.0 ], fov:46 }  /* 05 colophon    */
+  { p:[  0.0, 4.05,  13.6 ], t:[  0.0,  6.60, -18.0 ], fov:36 },  /* 00 hero      */
+  { p:[ -6.8, 2.10,   8.0 ], t:[  1.4,  5.20, -16.0 ], fov:52 },  /* 01 the sanmon */
+  { p:[  4.6, 8.40,   4.5 ], t:[ -1.2,  5.00, -26.0 ], fov:34 },  /* 02 gardens    */
+  { p:[ -7.5, 1.90,  -3.5 ], t:[  3.5,  9.50, -24.0 ], fov:58 },  /* 03 craft      */
+  { p:[  0.4, 5.20,  -8.0 ], t:[  0.0,  9.00, -28.0 ], fov:50 },  /* 04 afterlight */
+  { p:[  0.0, 11.0, -17.0 ], t:[  0.0,  5.00, -30.0 ], fov:48 }   /* 05 colophon   */
 ];
 var V3 = function(a){ return new THREE.Vector3(a[0],a[1],a[2]); };
 var curveP = new THREE.CatmullRomCurve3(CAM.map(function(c){ return V3(c.p); }), false, 'catmullrom', .42);
@@ -2119,7 +2170,11 @@ function bootDOM(gl){
 
   /* ---------------------------------------------------- preloader */
   var pre = $('#pre'), fill = $('#pre-fill'), pct = $('#pre-pct');
-  var imgs = $$('.fg img'), done = 0, total = imgs.length + 1, shown = 0;
+  /* the four field-note stills are CSS backgrounds, so they never fire a load
+     event on an element. Pull them through Image() or the bar stalls waiting
+     on a window load that the browser reports only once they land. */
+  var stills = ['kage-approach.webp','kage-lantern-court.webp','kage-moonwater.webp','kage-sanmon-preview.webp'];
+  var imgs = $$('.fg img'), done = 0, total = imgs.length + stills.length + 1, shown = 0;
   function bump(){
     done++;
     var target = Math.round(done/total*100);
@@ -2130,6 +2185,11 @@ function bootDOM(gl){
   imgs.forEach(function(im){
     if (im.complete) bump();
     else { im.addEventListener('load', bump); im.addEventListener('error', bump); }
+  });
+  stills.forEach(function(src){
+    var im = new Image();
+    im.addEventListener('load', bump); im.addEventListener('error', bump);
+    im.src = src;
   });
   var closed = false;
   function finish(){
@@ -2144,7 +2204,7 @@ function bootDOM(gl){
     }, 380);
   }
   win.addEventListener('load', function(){ bump(); setTimeout(finish, 260); });
-  setTimeout(finish, 4200);
+  setTimeout(finish, 3200);
 
   /* ?solo=<id> shows one chapter on its own and ?p=0.6 pins the rig where
      that chapter would put it — both exist so a single frame can be checked
