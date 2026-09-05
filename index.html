@@ -413,7 +413,7 @@ body.no-gl .word-fb{display:block}
    downward and is parked back in its own section. */
 #fg-sky{
   position:fixed; left:0; top:0; width:0; height:0;
-  z-index:8; pointer-events:none;    /* over the canvas, under all copy */
+  z-index:52; pointer-events:none;   /* in front of the layout and the masthead */
   --lean:0px;                        /* the pointer's pull, written by JS */
 }
 .fg{ position:absolute; inset:0; z-index:3; overflow:visible; pointer-events:none; }
@@ -486,10 +486,10 @@ body.no-gl .word-fb{display:block}
         negative bottom is real artwork buried under the frame edge. ---- */
 /* the bank standing off the left is the same plate as the low band, scaled up
    and buried deeper, so its crown reads as a mound rather than a hedge */
-[data-fg="hero"] .fg-mound  { left:-14%; bottom:-95px;  width:clamp(680px,80vw,1360px) }
-[data-fg="hero"] .fg-grass  { right:-9%; bottom:-118px; width:clamp(330px,38vw,660px) }
-[data-fg="hero"] .fg-bush   { left:-11%; bottom:-58px;  width:clamp(250px,27vw,500px) }
-[data-fg="hero"] .fg-leaves { right:-6%; bottom:-30px;  width:clamp(260px,29vw,500px) }
+[data-fg="hero"] .fg-mound  { right:-12%; bottom:-95px; width:max(clamp(680px,80vw,1360px), 86svh) }
+[data-fg="hero"] .fg-grass  { left:-8%;  bottom:-124px; width:max(clamp(330px,38vw,660px), 44svh) }
+[data-fg="hero"] .fg-bush   { right:6%;  bottom:-58px;  width:max(clamp(230px,24vw,440px), 30svh) }
+[data-fg="hero"] .fg-leaves { right:-6%; bottom:-30px;  width:max(clamp(260px,29vw,500px), 18svh) }
 /* ground cover this close to the eye is catching the lantern light, so it is
    lifted well past the plate's own night grade */
 [data-fg="hero"] .fg-mound>img,[data-fg="hero"] .fg-grass>img{
@@ -497,37 +497,45 @@ body.no-gl .word-fb{display:block}
 }
 [data-fg="hero"] .fg-bush>img{ filter:saturate(.95) brightness(.72) }
 
-[data-fg="gate"] .fg-wall   { left:0;    bottom:-30px;  width:clamp(430px,47vw,780px) }
-[data-fg="gate"] .fg-pine   { right:-4%; bottom:-46px;  width:clamp(190px,21vw,370px) }
-[data-fg="gate"] .fg-grass  { left:3%;   bottom:-150px; width:clamp(420px,60vw,1050px) }
+[data-fg="gate"] .fg-wall   { left:0;    bottom:-30px;  width:max(clamp(430px,47vw,780px), 29svh) }
+[data-fg="gate"] .fg-pine   { right:-4%; bottom:-46px;  width:max(clamp(190px,21vw,370px), 13svh) }
+[data-fg="gate"] .fg-grass  { left:3%;   bottom:-150px; width:max(clamp(420px,60vw,1050px), 37svh) }
 
-[data-fg="pathways"] .fg-sakura { left:-6%;  bottom:-86px; width:clamp(430px,50vw,880px) }
-[data-fg="pathways"] .fg-leaves { right:-6%; bottom:-62px; width:clamp(330px,38vw,670px) }
-[data-fg="pathways"] .fg-lantern{ left:-1%;  bottom:-96px; width:clamp(120px,13vw,215px) }
-[data-fg="pathways"] .fg-bush   { right:-4%; bottom:-38px; width:clamp(250px,30vw,530px) }
+[data-fg="pathways"] .fg-sakura { left:-6%;  bottom:-86px; width:max(clamp(430px,50vw,880px), 31svh) }
+[data-fg="pathways"] .fg-leaves { right:-6%; bottom:-62px; width:max(clamp(330px,38vw,670px), 24svh) }
+[data-fg="pathways"] .fg-lantern{ left:-1%;  bottom:-96px; width:max(clamp(120px,13vw,215px), 8svh) }
+[data-fg="pathways"] .fg-bush   { right:-4%; bottom:-38px; width:max(clamp(250px,30vw,530px), 19svh) }
 
-[data-fg="lessons"] .fg-wall   { right:-8%; bottom:-78px; width:clamp(390px,50vw,870px) }
-[data-fg="lessons"] .fg-stones { left:-4%;  bottom:-48px; width:clamp(250px,30vw,530px) }
-[data-fg="lessons"] .fg-grass  { left:24%;  bottom:-84px; width:clamp(280px,33vw,580px) }
+[data-fg="lessons"] .fg-wall   { right:-8%; bottom:-78px; width:max(clamp(390px,50vw,870px), 31svh) }
+[data-fg="lessons"] .fg-stones { left:-4%;  bottom:-48px; width:max(clamp(250px,30vw,530px), 19svh) }
+[data-fg="lessons"] .fg-grass  { left:24%;  bottom:-84px; width:max(clamp(280px,33vw,580px), 20svh) }
 
 [data-fg="eternity"] .fg-hill   { left:-8%;  bottom:calc(-1 * min(20vh,15.5vw)); width:min(150vh,116%) }
-[data-fg="eternity"] .fg-lantern{ left:2%;   bottom:-70px; width:clamp(115px,12vw,205px) }
-[data-fg="eternity"] .fg-wall   { right:-9%; bottom:-26px; width:clamp(360px,44vw,760px) }
-[data-fg="eternity"] .fg-grass  { right:-7%; bottom:-60px; width:clamp(300px,37vw,670px) }
-[data-fg="eternity"] .fg-sakura { left:-15%; bottom:-70px; width:clamp(280px,33vw,580px) }
+[data-fg="eternity"] .fg-lantern{ left:2%;   bottom:-70px; width:max(clamp(115px,12vw,205px), 7svh) }
+[data-fg="eternity"] .fg-wall   { right:-9%; bottom:-26px; width:max(clamp(360px,44vw,760px), 27svh) }
+[data-fg="eternity"] .fg-grass  { right:-7%; bottom:-60px; width:max(clamp(300px,37vw,670px), 23svh) }
+[data-fg="eternity"] .fg-sakura { left:-15%; bottom:-70px; width:max(clamp(280px,33vw,580px), 20svh) }
 
-[data-fg="foot"] .fg-bush   { left:-6%;  bottom:-110px; width:clamp(230px,28vw,480px) }
-[data-fg="foot"] .fg-grass  { right:-5%; bottom:-98px;  width:clamp(255px,30vw,530px) }
-[data-fg="foot"] .fg-stones { left:36%;  bottom:-104px; width:clamp(190px,22vw,370px) }
+[data-fg="foot"] .fg-bush   { left:-6%;  bottom:-110px; width:max(clamp(230px,28vw,480px), 17svh) }
+[data-fg="foot"] .fg-grass  { right:-5%; bottom:-98px;  width:max(clamp(255px,30vw,530px), 19svh) }
+[data-fg="foot"] .fg-stones { left:36%;  bottom:-104px; width:max(clamp(190px,22vw,370px), 14svh) }
 
 @media (max-width:980px){
-  .fg.fg-active,.fg.fg-retiring{ height:min(44svh,420px) }
+  .fg.fg-active,.fg.fg-retiring{ height:min(34svh,320px) }
   [data-fg="gate"] .fg-pine,[data-fg="pathways"] .fg-sakura,
   [data-fg="lessons"] .fg-wall,[data-fg="eternity"] .fg-sakura,
   [data-fg="foot"] .fg-stones{ display:none }
-  [data-fg="hero"] .fg-mound { left:-30%; bottom:-24px; width:min(180vw,860px) }
-  [data-fg="hero"] .fg-grass { right:-18%; bottom:-56px; width:min(70vw,340px) }
-  [data-fg="hero"] .fg-bush  { left:-18%; bottom:-56px;  width:min(70vw,340px) }
+  /* on a phone the chapter list lands on the foot of the frame, so the near
+     plane is dropped until it only skirts the bottom edge */
+  [data-fg="hero"] .fg-mound { right:-34%; bottom:-118px; width:min(210vw,980px) }
+  [data-fg="hero"] .fg-grass { left:-26%;  bottom:-126px; width:min(96vw,460px) }
+  [data-fg="hero"] .fg-bush  { right:-10%; bottom:-96px;  width:min(56vw,270px) }
+  [data-fg="gate"] .fg-grass { bottom:-116px }
+  [data-fg="pathways"] .fg-bush{ bottom:-72px }
+  [data-fg="lessons"] .fg-grass{ bottom:-96px }
+  [data-fg="eternity"] .fg-grass{ bottom:-84px }
+  [data-fg="foot"] .fg-grass { bottom:-104px }
+  [data-fg="foot"] .fg-bush  { bottom:-112px }
   [data-fg="hero"] .fg-leaves{ right:-16%; bottom:-10px; width:min(58vw,280px) }
   [data-fg="gate"] .fg-wall  { left:-14%; bottom:-22px; width:min(82vw,440px) }
   [data-fg="gate"] .fg-grass { left:auto; right:-10%; bottom:-76px; width:min(94vw,530px) }
@@ -1358,8 +1366,8 @@ buildHall({ w:21, d:10, bh:4.4, rh:3.4, win:9,  tier:true,  z:TERRACE_Z - 7.5, y
 buildHall({ w:12, d:7,  bh:3.0, rh:2.3, win:5,  tier:false, x:-16, z:TERRACE_Z - 4, y:TERRACE_Y });
 buildHall({ w:12, d:7,  bh:3.0, rh:2.3, win:5,  tier:false, x: 16, z:TERRACE_Z - 4, y:TERRACE_Y });
 /* the two silhouettes further up the slope */
-buildHall({ w:26, d:13, bh:4.6, rh:4.0, win:0,  tier:true,  z:TERRACE_Z - 20, y:TERRACE_Y + 0.4 });
-buildHall({ w:32, d:16, bh:5.2, rh:4.6, win:0,  tier:true,  z:TERRACE_Z - 38, y:TERRACE_Y + 2.2 });
+buildHall({ w:26, d:13, bh:4.2, rh:3.6, win:0,  tier:false, z:TERRACE_Z - 20, y:TERRACE_Y + 0.4 });
+buildHall({ w:32, d:16, bh:4.4, rh:4.0, win:0,  tier:false, z:TERRACE_Z - 38, y:TERRACE_Y + 1.4 });
 
 /* =====================================================================
    ## JS WORLD — the goju-no-to. Five shrinking storeys, each a body and a
@@ -1413,7 +1421,7 @@ function pagoda(x, y, z, tiers, base, storey){
   WORLD.add(g);
   return g;
 }
-pagoda(-22.5, TERRACE_Y + 2.4, TERRACE_Z - 13, 5, 8.8, 2.90);
+pagoda(-20.0, TERRACE_Y + 0.6, TERRACE_Z - 15, 5, 7.0, 3.07);
 
 /* =====================================================================
    ## JS WORLD — stone lanterns. Six parts, one ember, one additive bloom.
