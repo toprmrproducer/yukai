@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yukai — Where stillness reveals the unseen</title>
+<meta name="description" content="A five-chapter night walk through a Kyoto mountain temple. Charred cypress, lantern light and a vermilion moon, rendered live in WebGL.">
+<meta name="theme-color" content="#05070a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2306100c'/%3E%3Ccircle cx='16' cy='18' r='7.5' fill='%23d6ad62'/%3E%3Cpath d='M8 12h16M11 16h10' stroke='%23eee9da' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@200;300;400;500;600&display=swap">
+
+<style>
+/* ======================================================== ## CSS TOKENS */
+:root{
+  --ink:#05070a;
+  --ink-2:#0a0e12;
+  --bone:#dfe7e0;
+  --bone-dim:#aab4ad;
+  --muted:#78837c;
+  --line:rgba(223,231,224,.13);
+  --line-soft:rgba(223,231,224,.07);
+  --vermilion:#e0231c;
+  --ember:#ff5a3c;
+  --gold:#c9a24a;
+  --pad:clamp(20px, 3.4vw, 56px);
+  --nav-h:84px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-io:cubic-bezier(.65,0,.35,1);
+  --jp:'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Noto Sans JP',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:auto}
+body{
+  margin:0; background:var(--ink); color:var(--bone);
+  font-family:'Onest',system-ui,-apple-system,'Helvetica Neue',sans-serif;
+  font-weight:300; font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+}
+body.is-locked{overflow:hidden;height:100vh}
+::selection{background:var(--vermilion);color:#fff}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.jp{font-family:var(--jp);font-weight:300}
+
+/* ======================================================== ## CSS LAYERS */
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;background:#05070a}
+#vignette{
+  position:fixed;inset:0;z-index:55;pointer-events:none;
+  background:
+    radial-gradient(125% 95% at 50% 42%, transparent 38%, rgba(3,5,8,.62) 100%),
+    linear-gradient(180deg, rgba(3,5,8,.38) 0%, transparent 22%, transparent 78%, rgba(3,5,8,.22) 100%);
+}
+#grain{
+  position:fixed;inset:-1px;z-index:60;pointer-events:none;
+  opacity:.055;mix-blend-mode:overlay;background-repeat:repeat;background-size:180px 180px;
+}
+.page{position:relative;z-index:10}
+
+/* soft cursor ring, follows with lag; grows over interactive things */
+.cur-dot{
+  position:fixed;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;
+  border:1px solid rgba(223,231,224,.55);border-radius:50%;
+  z-index:70;pointer-events:none;opacity:0;
+  transition:opacity .3s var(--ease), width .28s var(--ease), height .28s var(--ease),
+             margin .28s var(--ease), border-color .28s var(--ease), background .28s var(--ease);
+  will-change:transform;
+}
+.cur-dot.on{opacity:1}
+.cur-dot.hot{width:52px;height:52px;margin:-26px 0 0 -26px;border-color:rgba(224,35,28,.75);background:rgba(224,35,28,.07)}
+@media (hover:none){.cur-dot{display:none}}
+
+/* ======================================================== ## CSS TYPE */
+.display{
+  font-weight:200; line-height:.92; letter-spacing:-.028em;
+  text-transform:uppercase; margin:0;
+}
+.h-hero{font-size:clamp(38px, 4.4vw, 72px)}
+.h-sec{font-size:clamp(34px, 4.0vw, 66px)}
+.eyebrow{
+  font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:var(--bone-dim);
+  display:flex;align-items:center;gap:10px;font-weight:400;
+}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--vermilion);flex:0 0 auto}
+.body{font-size:15px;line-height:1.72;color:var(--bone-dim);font-weight:300}
+.body,.body-lg,.lead,.hero-sub,.les p{text-shadow:0 1px 14px rgba(2,4,7,.8),0 0 3px rgba(2,4,7,.5)}
+.display{text-shadow:0 2px 26px rgba(2,4,7,.55)}
+.body-lg{font-size:clamp(15px,1.15vw,18px);line-height:1.68;color:var(--bone-dim);font-weight:300}
+.lead{font-size:clamp(15px,1.2vw,18px);line-height:1.66;color:var(--bone);font-weight:300}
+.k{font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.k b{color:var(--vermilion);font-weight:400}
+
+/* line-mask reveal used on every display heading */
+.mask-line{display:block;overflow:hidden}
+.mask-line>span{display:block;transform:translateY(105%);transition:transform 1.05s var(--ease-out)}
+.is-in .mask-line>span{transform:none}
+.is-in .mask-line:nth-child(2)>span{transition-delay:.08s}
+.is-in .mask-line:nth-child(3)>span{transition-delay:.16s}
+
+[data-rv]{opacity:0;transition:opacity .9s var(--ease-out), transform .9s var(--ease-out)}
+[data-rv="up"]{transform:translateY(26px)}
+[data-rv="left"]{transform:translateX(-26px)}
+[data-rv].is-in{opacity:1;transform:none}
+
+/* ======================================================== ## CSS NAV */
+.nav{
+  position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 var(--pad);
+  transition:background .5s var(--ease), backdrop-filter .5s var(--ease), border-color .5s var(--ease);
+  border-bottom:1px solid transparent;
+}
+.nav.is-stuck{
+  background:linear-gradient(180deg, rgba(5,7,10,.86), rgba(5,7,10,.5));
+  backdrop-filter:blur(9px) saturate(120%);
+  -webkit-backdrop-filter:blur(9px) saturate(120%);
+  border-bottom-color:var(--line-soft);
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:26px;height:26px;flex:0 0 auto}
+.brand-tx{display:flex;flex-direction:column;line-height:1}
+.brand-tx b{font-size:13.5px;letter-spacing:.30em;font-weight:400}
+.brand-tx i{font-size:8.5px;letter-spacing:.24em;color:var(--muted);font-style:normal;margin-top:5px}
+.nav-links{display:flex;align-items:center;gap:clamp(18px,2.4vw,42px)}
+.nav-link{
+  position:relative;font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--bone-dim);padding:6px 0;overflow:hidden;height:24px;display:block;
+}
+.nav-link>span{display:block;transition:transform .45s var(--ease-out), color .45s var(--ease)}
+.nav-link .alt{position:absolute;inset:0;font-family:var(--jp);letter-spacing:.2em;transform:translateY(100%);color:var(--bone)}
+.nav-link:hover>span:first-child{transform:translateY(-100%)}
+.nav-link:hover .alt{transform:translateY(0)}
+.nav-link.is-cur{color:var(--bone)}
+.nav-link.is-cur::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--bone);
+}
+.nav-burger{display:none;width:30px;height:30px;flex-direction:column;justify-content:center;gap:6px}
+.nav-burger i{display:block;height:1px;background:var(--bone);transition:transform .4s var(--ease), opacity .3s}
+.nav-burger i:first-child{width:100%}
+.nav-burger i:last-child{width:64%;margin-left:auto}
+.nav-burger.on i:first-child{transform:translateY(3.5px) rotate(45deg)}
+.nav-burger.on i:last-child{width:100%;transform:translateY(-3.5px) rotate(-45deg)}
+@media (min-width:981px){ .nav-burger{display:flex;pointer-events:none;opacity:.55} }
+
+/* ======================================================== ## CSS PRELOADER */
+#pre{
+  position:fixed;inset:0;z-index:100;background:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity 1s var(--ease), visibility 1s;
+}
+#pre.gone{opacity:0;visibility:hidden;pointer-events:none}
+.pre-in{width:min(340px,72vw);text-align:center}
+.pre-mark svg{width:46px;height:46px;margin:0 auto}
+.pre-jp{font-size:15px;letter-spacing:.6em;margin:20px 0 26px;color:var(--bone-dim);padding-left:.6em}
+.pre-bar{height:1px;background:var(--line);position:relative;overflow:hidden}
+.pre-bar i{position:absolute;inset:0 100% 0 0;background:var(--bone);transition:right .35s linear}
+.pre-meta{display:flex;justify-content:space-between;margin-top:12px;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.pre-meta b{font-weight:400;color:var(--bone-dim)}
+
+/* ======================================================== ## CSS HERO */
+.hero{
+  position:relative;min-height:100svh;padding:calc(var(--nav-h) + 26px) var(--pad) 34px;
+  display:flex;flex-direction:column;
+}
+.hero-top{max-width:min(560px,52vw)}
+.hero-top .eyebrow{margin-bottom:22px}
+.hero-sub{margin:22px 0 0;max-width:380px}
+.hero-spacer{flex:1 1 auto;min-height:90px}
+.hero-foot{display:flex;flex-direction:column;gap:26px}
+.hero-cue{display:flex;align-items:center;gap:14px;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+.hero-cue .track{width:74px;height:1px;background:var(--line);position:relative;overflow:hidden}
+.hero-cue .track i{position:absolute;left:0;top:0;height:100%;width:34%;background:var(--bone-dim);animation:cue 2.6s var(--ease-io) infinite}
+@keyframes cue{0%{transform:translateX(-110%)}60%,100%{transform:translateX(300%)}}
+
+.chapters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--line-soft)}
+.chip{
+  position:relative;padding:18px 26px 16px 0;display:flex;gap:14px;align-items:flex-start;
+  border-right:1px solid var(--line-soft);cursor:pointer;
+}
+.chip:last-child{border-right:0}
+.chip .num{font-size:clamp(20px,1.7vw,27px);font-weight:200;line-height:1;color:var(--bone);opacity:.85;transition:color .4s,opacity .4s}
+.chip .tx{display:block;max-width:210px}
+.chip .tx b{display:block;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:400;color:var(--bone-dim);transition:color .4s}
+.chip .tx p{margin:7px 0 0;font-size:12px;line-height:1.5;color:var(--muted);opacity:0;transform:translateY(6px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+.chip::after{content:'';position:absolute;left:0;top:-1px;width:0;height:1px;background:var(--vermilion);transition:width .6s var(--ease-out)}
+.chip:hover::after,.chip.on::after{width:100%}
+.chip:hover .num,.chip.on .num{color:#fff;opacity:1}
+.chip:hover .tx b,.chip.on .tx b{color:var(--bone)}
+.chip:hover .tx p{opacity:1;transform:none}
+
+/* the giant wordmark is drawn in WebGL; this is the no-webgl fallback */
+.word-fb{
+  position:absolute;left:0;right:0;bottom:16vh;z-index:-1;display:none;
+  font-size:23vw;line-height:.8;font-weight:200;letter-spacing:.06em;
+  text-align:center;color:rgba(223,231,224,.9);pointer-events:none;
+}
+body.no-gl .word-fb{display:block}
+
+.hero-side{position:absolute;right:var(--pad);top:calc(var(--nav-h) + 40px);pointer-events:none}
+.hero-side .v{
+  writing-mode:vertical-rl;font-size:clamp(17px,1.5vw,23px);letter-spacing:.5em;
+  color:rgba(223,231,224,.68);
+}
+
+/* the little live window into the scene, lower right of the hero */
+.peek{
+  position:absolute;right:var(--pad);bottom:clamp(90px,14vh,150px);width:clamp(180px,15vw,236px);
+}
+.peek-fr{
+  display:block;aspect-ratio:16/10;border:1px solid rgba(223,231,224,.18);position:relative;overflow:hidden;
+  background:transparent;box-shadow:inset 0 0 40px rgba(2,4,7,.6), 0 16px 40px rgba(0,0,0,.45);
+  transition:border-color .5s var(--ease), transform .7s var(--ease-out);
+}
+.peek:hover .peek-fr{border-color:rgba(223,231,224,.34);transform:translateY(-3px)}
+.peek-play{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:34px;height:34px;border:1px solid rgba(223,231,224,.5);border-radius:50%;
+  display:grid;place-items:center;pointer-events:none;
+  background:rgba(5,7,10,.25);backdrop-filter:blur(2px);
+}
+.peek-play svg{width:14px;height:14px;margin-left:2px}
+.peek-cap{display:flex;align-items:baseline;gap:10px;margin-top:11px}
+.peek-cap b{font-size:15px;letter-spacing:.22em;font-weight:300;color:var(--bone-dim)}
+.peek-cap i{font-style:normal;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+
+/* ======================================================== ## CSS SCRIM */
+/* The band under the masthead and the one along the floor live on a single
+   fixed layer. Putting them on each section instead stacked one gradient's
+   opaque top edge against the previous section's transparent bottom, and
+   that seam rode up the page as you scrolled. It sits above the canvas and
+   below every scrap of page content, so nothing it darkens is text. */
+#grade{
+  position:fixed;inset:0;z-index:6;pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(3,5,8,.68) 0%, rgba(3,5,8,.18) 14%, rgba(3,5,8,0) 27%),
+    linear-gradient(0deg,   rgba(3,5,8,.50) 0%, rgba(3,5,8,0) 20%);
+}
+/* Per-chapter grading is radial only: it reaches zero well inside its own
+   box, so two of them meeting can never draw an edge. */
+.hero::before,.sec::before,.foot::before{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(86% 56% at 10% 44%, rgba(3,5,8,.80), rgba(3,5,8,.36) 48%, rgba(3,5,8,0) 84%);
+}
+.hero::before{
+  background:radial-gradient(74% 40% at 13% 26%, rgba(3,5,8,.86), rgba(3,5,8,.40) 48%, rgba(3,5,8,0) 82%);
+}
+#gate::before{
+  background:
+    radial-gradient(70% 60% at 7% 48%, rgba(3,5,8,.84), rgba(3,5,8,.32) 54%, rgba(3,5,8,0) 86%),
+    radial-gradient(54% 44% at 74% 44%, rgba(3,5,8,.58), rgba(3,5,8,0) 80%);
+}
+#lessons::before{
+  background:radial-gradient(94% 66% at 22% 40%, rgba(3,5,8,.70), rgba(3,5,8,.28) 54%, rgba(3,5,8,0) 88%);
+}
+.foot::before{
+  background:radial-gradient(120% 88% at 50% 72%, rgba(3,5,8,.84), rgba(3,5,8,.46) 56%, rgba(3,5,8,0) 94%);
+}
+
+/* ======================================================== ## CSS SECTION SHELL */
+.sec{
+  position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:center;
+  padding:calc(var(--nav-h) + clamp(56px,8vh,96px)) var(--pad) clamp(70px,10vh,120px);
+}
+.sec-head{
+  position:absolute;left:var(--pad);right:var(--pad);top:calc(var(--nav-h) + clamp(14px,2.6vh,30px));
+  display:flex;align-items:center;gap:20px;
+}
+.sec-head .rule{flex:1 1 auto;height:1px;background:var(--line-soft)}
+
+/* ======================================================== ## CSS GATE */
+.gate-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);gap:clamp(30px,5vw,86px);align-items:start}
+.gate-copy{max-width:520px;padding-top:8px}
+.gate-copy .lead{margin:0 0 20px}
+.gate-copy .body{margin:0 0 30px}
+.arrowlink{display:inline-flex;align-items:center;gap:14px;font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--bone-dim)}
+.arrowlink .ar{width:26px;height:26px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;transition:background .4s var(--ease),border-color .4s,transform .5s var(--ease-out)}
+.arrowlink svg{width:12px;height:12px}
+.arrowlink:hover{color:var(--bone)}
+.arrowlink:hover .ar{background:var(--vermilion);border-color:var(--vermilion);transform:translate(3px,-3px)}
+.gate-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:20px;
+  margin-top:clamp(50px,8vh,96px);padding-top:26px;border-top:1px solid var(--line-soft);
+}
+.gate-stats div b{display:block;font-size:clamp(26px,2.6vw,42px);font-weight:200;line-height:1;letter-spacing:-.02em}
+.gate-stats div span{display:block;margin-top:9px;font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+
+/* ======================================================== ## CSS GALLERY */
+.cards{display:grid;grid-template-columns:1.42fr 1fr;grid-template-rows:repeat(2,1fr);gap:14px;height:min(62vh,560px);margin-top:clamp(20px,4vh,46px)}
+.card{position:relative;display:flex;flex-direction:column;cursor:pointer}
+.card:nth-child(1){grid-row:1 / span 2}
+.card-fr{
+  position:relative;flex:1 1 auto;overflow:hidden;border:1px solid rgba(223,231,224,.15);
+  background:transparent;transition:border-color .6s var(--ease), box-shadow .6s var(--ease);
+  box-shadow:inset 0 0 70px rgba(2,4,7,.62), 0 22px 60px rgba(0,0,0,.45);
+}
+/* a foot of shade inside each window so the caption always has a floor */
+.card-fr::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:46%;pointer-events:none;
+  background:linear-gradient(0deg, rgba(3,5,8,.86) 0%, rgba(3,5,8,.30) 55%, rgba(3,5,8,0) 100%);
+}
+.card:hover .card-fr{border-color:rgba(223,231,224,.42);box-shadow:inset 0 0 70px rgba(2,4,7,.42), 0 26px 70px rgba(0,0,0,.55)}
+.card-ar{
+  position:absolute;right:14px;top:14px;width:26px;height:26px;display:grid;place-items:center;z-index:2;
+  opacity:0;transform:translate(-6px,6px);transition:opacity .5s var(--ease),transform .5s var(--ease-out);
+}
+.card-ar svg{width:13px;height:13px}
+.card:hover .card-ar{opacity:1;transform:none}
+/* the warm breathing pool each card sits in — stands in for a bloom pass */
+.card-fr .glow{
+  position:absolute;left:var(--gx);top:var(--gy);width:0;height:0;pointer-events:none;
+  box-shadow:0 0 calc(var(--gr) * 3) calc(var(--gr) * 1.4) var(--gc1),
+             0 0 calc(var(--gr) * 7) calc(var(--gr) * 3.2) var(--gc2);
+  animation:breathe var(--gt) ease-in-out infinite alternate;
+  mix-blend-mode:screen;opacity:.9;
+}
+.card-fr .glow--flame{animation-duration:var(--gt2)}
+@keyframes breathe{from{opacity:.55;transform:scale(.9)}to{opacity:1;transform:scale(1.08)}}
+.card-lab{position:absolute;left:18px;bottom:16px;display:flex;align-items:baseline;gap:12px;z-index:2}
+.card-lab b{font-size:12px;letter-spacing:.26em;text-transform:uppercase;font-weight:400}
+.card-lab .jp{font-size:12px;letter-spacing:.2em;color:var(--bone-dim)}
+.card-meta{display:flex;justify-content:space-between;padding-top:11px;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+/* ======================================================== ## CSS CURRICULUM */
+.cur-head{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(24px,5vw,80px);align-items:end;margin-bottom:clamp(36px,6vh,64px)}
+.cur-head .body-lg{margin:0;max-width:560px}
+.cur{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  border:1px solid var(--line-soft);background:rgba(5,8,12,.74);
+  backdrop-filter:blur(7px) saturate(115%);-webkit-backdrop-filter:blur(7px) saturate(115%);
+}
+.les{position:relative;padding:26px 28px 30px;border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);overflow:hidden;cursor:pointer}
+.les:nth-child(1){grid-column:1 / span 2}
+.les:nth-child(2){grid-column:3}
+.les:nth-child(n+3){border-bottom:0}
+.les:nth-child(2),.les:nth-child(5){border-right:0}
+.les>.k,.les>h3,.les>p,.les>.t{position:relative;z-index:2}
+.les .k{display:block;margin-bottom:22px}
+.les-img{
+  position:absolute;right:0;top:0;bottom:0;width:62%;overflow:hidden;pointer-events:none;z-index:1;
+  opacity:.52;transition:opacity .8s var(--ease), transform 1.2s var(--ease-out);
+  -webkit-mask-image:linear-gradient(90deg, transparent 0%, #000 44%);
+          mask-image:linear-gradient(90deg, transparent 0%, #000 44%);
+}
+.les-img img{width:100%;height:100%;object-fit:cover;object-position:center;
+  filter:brightness(.92) saturate(.8) contrast(1.04)}
+.les:hover .les-img{opacity:.82;transform:scale(1.05)}
+.les h3{margin:0;font-size:clamp(19px,1.7vw,26px);font-weight:300;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px}
+.les h3 em{font-style:normal;font-size:.62em;letter-spacing:.16em;color:var(--bone-dim);font-family:var(--jp)}
+.les p{margin:14px 0 0;font-size:13px;line-height:1.6;color:var(--muted);max-width:320px}
+.les .t{display:block;margin-top:26px;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.les .bar{position:absolute;left:0;bottom:0;width:0;height:1px;background:var(--vermilion);transition:width .7s var(--ease-out)}
+.les:hover .bar{width:100%}
+.les::before{content:'';position:absolute;inset:0;background:radial-gradient(60% 80% at 20% 100%, rgba(224,35,28,.10), transparent 70%);opacity:0;transition:opacity .6s var(--ease)}
+.les:hover::before{opacity:1}
+.les:hover p{color:var(--bone-dim)}
+
+/* ======================================================== ## CSS CLOSING */
+.fin{align-items:flex-start;justify-content:center;min-height:110svh}
+.fin .eyebrow{margin-bottom:26px}
+.fin .display{font-size:clamp(56px,9vw,150px);letter-spacing:-.04em}
+.fin .body-lg{max-width:540px;margin:30px 0 40px}
+.cta{
+  position:relative;display:inline-flex;align-items:center;gap:12px;overflow:hidden;
+  padding:19px 34px;border:1px solid var(--line);border-radius:100px;
+  font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;
+  transition:border-color .5s var(--ease), color .5s var(--ease);
+}
+.cta i{position:absolute;inset:0;background:var(--vermilion);transform:translateY(101%);transition:transform .6s var(--ease-out)}
+.cta span,.cta svg{position:relative;z-index:2}
+.cta svg{transition:transform .5s var(--ease-out)}
+.cta:hover{border-color:var(--vermilion);color:#fff}
+.cta:hover i{transform:none}
+.cta:hover svg{transform:translate(3px,-3px)}
+/* the chapter word, set on its side down the right edge */
+.fin-v{
+  position:absolute;right:calc(var(--pad) - 6px);top:0;height:100%;display:flex;align-items:center;
+  pointer-events:none;
+}
+.fin-v span{
+  writing-mode:vertical-rl;font-size:clamp(46px,6.4vw,104px);font-weight:200;letter-spacing:.02em;
+  text-transform:uppercase;color:rgba(223,231,224,.9);line-height:1;
+}
+
+/* ======================================================== ## CSS FOOTER */
+.foot{position:relative;padding:clamp(70px,11vh,130px) var(--pad) 26px;border-top:1px solid var(--line-soft)}
+.foot-grid{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,.72fr));gap:clamp(24px,4vw,60px);padding-bottom:clamp(44px,7vh,80px)}
+.foot-brand{display:flex;gap:20px;align-items:flex-start;padding-right:clamp(10px,4vw,80px)}
+.foot-brand svg{flex:0 0 auto;margin-top:4px}
+.foot-brand p{margin:0;font-size:clamp(16px,1.5vw,24px);line-height:1.45;font-weight:200;letter-spacing:-.01em;color:var(--bone)}
+.foot h4{margin:0 0 22px;font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.foot ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px}
+.foot li a{font-size:13.5px;color:var(--bone-dim);transition:color .35s var(--ease),padding-left .35s var(--ease)}
+.foot li a:hover{color:var(--bone);padding-left:6px}
+.foot-cols{display:contents}
+.foot-base{display:flex;justify-content:space-between;gap:20px;padding-top:22px;border-top:1px solid var(--line-soft);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.foot-base .jp{letter-spacing:.3em;text-transform:none}
+
+/* ======================================================== ## CSS FOREGROUND CUTOUTS */
+/* THE NEAR PLANE.
+   A plate that scrolls with its section reads as wallpaper printed on the
+   document. It has to read as something standing between the camera and the
+   scene, which means it is pinned to the foot of the WINDOW and does not move
+   when the page does.
+
+   So a stage lives inertly inside its chapter, and the moment that chapter
+   takes the viewport its whole .fg is re-parented into #fg-sky and switched to
+   position:fixed, bottom:0. Every piece is then placed from the bottom edge of
+   the window: left/right and bottom, never top. The outgoing stage dissolves
+   downward and is parked back in its own section. */
+#fg-sky{
+  position:fixed; left:0; top:0; width:0; height:0;
+  z-index:8; pointer-events:none;    /* over the canvas, under all copy */
+  --lean:0px;                        /* the pointer's pull, written by JS */
+}
+.fg{ position:absolute; inset:0; z-index:3; overflow:visible; pointer-events:none; }
+/* nothing in a chapter may widen the document; the plates overhang on purpose */
+.hero,.sec,.foot{ overflow-x:clip; overflow-y:visible; }
+
+.fg-el{
+  position:absolute; display:block; opacity:0;
+  translate:calc(var(--lean,0px) * var(--leanK,1)) 0;   /* composes with the entrance */
+  transition:translate .9s var(--ease-out);
+}
+.fg-el>img{ width:100%; height:auto; display:block; filter:saturate(.94) brightness(.9); }
+.fg-el--flip>img{ transform:scaleX(-1); }
+
+/* each piece waits off the edge it is anchored to until its chapter is called */
+[data-fg-in="up"]   { transform:translate3d(0,13%,0); }
+[data-fg-in="left"] { transform:translate3d(-11%,6%,0); }
+[data-fg-in="right"]{ transform:translate3d(11%,6%,0); }
+
+/* ---- the live stage: fixed to the foot of the window ---- */
+.fg.fg-active,.fg.fg-retiring{
+  position:fixed; left:0; right:0; top:auto; bottom:0;
+  height:min(58svh,700px); z-index:1; overflow:visible; pointer-events:none;
+}
+.fg.fg-active .fg-el{
+  opacity:1; transform:none;
+  transition:opacity 1.2s var(--ease-out), transform 1.5s var(--ease-out), translate .9s var(--ease-out);
+  transition-delay:var(--fg-delay,0ms);
+}
+.fg .fg-el:nth-child(2){ --fg-delay:90ms }
+.fg .fg-el:nth-child(3){ --fg-delay:180ms }
+.fg .fg-el:nth-child(4){ --fg-delay:270ms }
+.fg.fg-retiring .fg-el{
+  opacity:0; transform:translate3d(0,8vh,0) scale(.98); filter:blur(18px);
+  transition:opacity .68s var(--ease-out),transform .78s var(--ease-out),filter .78s var(--ease-out);
+}
+
+/* ---- the wind. Ground cover bends from its own base; a cut branch swings
+        from where it hangs. Both are slow enough to read as weather. ---- */
+@keyframes fg-bend{
+  from{ transform:rotate(-.34deg) translate3d(-4px,1px,0) }
+  to  { transform:rotate(.34deg)  translate3d(4px,-4px,0) }
+}
+@keyframes fg-swing{
+  from{ transform:rotate(-.55deg) translate3d(0,2px,0) }
+  to  { transform:rotate(.55deg)  translate3d(0,-7px,0) }
+}
+.fg-grass>img,.fg-bush>img,.fg-hill>img,.fg-mound>img{
+  animation:fg-bend 15s var(--ease-io) infinite alternate; transform-origin:50% 100%;
+}
+.fg-bush>img{ animation-duration:19s; animation-delay:-4s }
+.fg-hill>img { animation-duration:26s; animation-delay:-9s }
+.fg-mound>img{ animation-duration:23s; animation-delay:-11s; transform-origin:40% 100% }
+.fg-sakura>img,.fg-leaves>img,.fg-pine>img{
+  animation:fg-swing 21s var(--ease-io) infinite alternate;
+}
+.fg-sakura>img{ transform-origin:8% 0% }
+.fg-leaves>img{ transform-origin:92% 0% }
+.fg-pine>img  { transform-origin:70% 100%; animation-duration:24s; animation-delay:-6s }
+
+/* how hard the pointer drags each layer; the nearer it is, the more it leans */
+.fg-grass,.fg-bush{ --leanK:1 }
+.fg-mound{ --leanK:1.25 }
+.fg-sakura,.fg-leaves{ --leanK:1.6 }
+.fg-lantern,.fg-stones{ --leanK:.45 }
+.fg-wall,.fg-pine,.fg-hill{ --leanK:.28 }
+
+/* ---- placement. Every offset is measured from the bottom of the window.
+        The plates are trimmed flush to their own lowest opaque row, so a
+        negative bottom is real artwork buried under the frame edge. ---- */
+/* the bank standing off the left is the same plate as the low band, scaled up
+   and buried deeper, so its crown reads as a mound rather than a hedge */
+[data-fg="hero"] .fg-mound  { left:-14%; bottom:-95px;  width:clamp(680px,80vw,1360px) }
+[data-fg="hero"] .fg-grass  { right:-9%; bottom:-118px; width:clamp(330px,38vw,660px) }
+[data-fg="hero"] .fg-bush   { left:-11%; bottom:-58px;  width:clamp(250px,27vw,500px) }
+[data-fg="hero"] .fg-leaves { right:-6%; bottom:-30px;  width:clamp(260px,29vw,500px) }
+/* ground cover this close to the eye is catching the lantern light, so it is
+   lifted well past the plate's own night grade */
+[data-fg="hero"] .fg-mound>img,[data-fg="hero"] .fg-grass>img{
+  filter:saturate(1.02) brightness(.84) contrast(1.03);
+}
+[data-fg="hero"] .fg-bush>img{ filter:saturate(.95) brightness(.72) }
+
+[data-fg="gate"] .fg-wall   { left:0;    bottom:-30px;  width:clamp(430px,47vw,780px) }
+[data-fg="gate"] .fg-pine   { right:-4%; bottom:-46px;  width:clamp(190px,21vw,370px) }
+[data-fg="gate"] .fg-grass  { left:3%;   bottom:-150px; width:clamp(420px,60vw,1050px) }
+
+[data-fg="pathways"] .fg-sakura { left:-6%;  bottom:-86px; width:clamp(430px,50vw,880px) }
+[data-fg="pathways"] .fg-leaves { right:-6%; bottom:-62px; width:clamp(330px,38vw,670px) }
+[data-fg="pathways"] .fg-lantern{ left:-1%;  bottom:-96px; width:clamp(120px,13vw,215px) }
+[data-fg="pathways"] .fg-bush   { right:-4%; bottom:-38px; width:clamp(250px,30vw,530px) }
+
+[data-fg="lessons"] .fg-wall   { right:-8%; bottom:-78px; width:clamp(390px,50vw,870px) }
+[data-fg="lessons"] .fg-stones { left:-4%;  bottom:-48px; width:clamp(250px,30vw,530px) }
+[data-fg="lessons"] .fg-grass  { left:24%;  bottom:-84px; width:clamp(280px,33vw,580px) }
+
+[data-fg="eternity"] .fg-hill   { left:-8%;  bottom:calc(-1 * min(20vh,15.5vw)); width:min(150vh,116%) }
+[data-fg="eternity"] .fg-lantern{ left:2%;   bottom:-70px; width:clamp(115px,12vw,205px) }
+[data-fg="eternity"] .fg-wall   { right:-9%; bottom:-26px; width:clamp(360px,44vw,760px) }
+[data-fg="eternity"] .fg-grass  { right:-7%; bottom:-60px; width:clamp(300px,37vw,670px) }
+[data-fg="eternity"] .fg-sakura { left:-15%; bottom:-70px; width:clamp(280px,33vw,580px) }
+
+[data-fg="foot"] .fg-bush   { left:-6%;  bottom:-110px; width:clamp(230px,28vw,480px) }
+[data-fg="foot"] .fg-grass  { right:-5%; bottom:-98px;  width:clamp(255px,30vw,530px) }
+[data-fg="foot"] .fg-stones { left:36%;  bottom:-104px; width:clamp(190px,22vw,370px) }
+
+@media (max-width:980px){
+  .fg.fg-active,.fg.fg-retiring{ height:min(44svh,420px) }
+  [data-fg="gate"] .fg-pine,[data-fg="pathways"] .fg-sakura,
+  [data-fg="lessons"] .fg-wall,[data-fg="eternity"] .fg-sakura,
+  [data-fg="foot"] .fg-stones{ display:none }
+  [data-fg="hero"] .fg-mound { left:-30%; bottom:-24px; width:min(180vw,860px) }
+  [data-fg="hero"] .fg-grass { right:-18%; bottom:-56px; width:min(70vw,340px) }
+  [data-fg="hero"] .fg-bush  { left:-18%; bottom:-56px;  width:min(70vw,340px) }
+  [data-fg="hero"] .fg-leaves{ right:-16%; bottom:-10px; width:min(58vw,280px) }
+  [data-fg="gate"] .fg-wall  { left:-14%; bottom:-22px; width:min(82vw,440px) }
+  [data-fg="gate"] .fg-grass { left:auto; right:-10%; bottom:-76px; width:min(94vw,530px) }
+  [data-fg="pathways"] .fg-lantern{ left:-4%;  bottom:-58px; width:clamp(80px,20vw,128px) }
+  [data-fg="pathways"] .fg-bush   { right:-10%; bottom:-38px; width:min(72vw,400px) }
+  [data-fg="pathways"] .fg-leaves { right:-14%; bottom:-40px; width:min(64vw,340px) }
+  [data-fg="lessons"] .fg-stones  { left:-8%; bottom:-34px; width:min(66vw,360px) }
+  [data-fg="lessons"] .fg-grass   { left:10%; bottom:-60px; width:min(80vw,440px) }
+  [data-fg="eternity"] .fg-hill   { left:-20%; width:min(160vw,900px) }
+  [data-fg="eternity"] .fg-grass  { right:-12%; bottom:-44px; width:min(76vw,420px) }
+  [data-fg="foot"] .fg-grass  { right:-12%; bottom:-70px; width:min(76vw,420px) }
+  [data-fg="foot"] .fg-bush   { left:-12%; bottom:-80px; width:min(70vw,380px) }
+}
+@media (prefers-reduced-motion:reduce){
+  .fg-el>img{ animation:none !important }
+  .fg.fg-retiring .fg-el{ transition:none !important; filter:none !important }
+}
+
+/* ======================================================== ## CSS RAIL */
+.rail{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:11px;pointer-events:none}
+.rail i{display:block;width:12px;height:1px;background:rgba(223,231,224,.22);transition:width .5s var(--ease),background .5s var(--ease)}
+.rail i.on{width:26px;background:var(--bone)}
+
+/* ======================================================== ## CSS RESPONSIVE */
+@media (max-width:1180px){
+  .cards{grid-template-columns:1fr 1fr;height:auto}
+  .card:nth-child(1){grid-row:1;grid-column:1 / span 2}
+  .card-fr{min-height:230px}
+}
+@media (max-width:980px){
+  :root{--nav-h:68px}
+  /* a plate scaled to a wide window is a thin strip on a phone, so the
+     ground cover is blown up and re-centred instead of vanishing */
+  .fg-grass,.fg-bush,.fg-hill{width:210%;left:-55%}
+  [data-fg="hero"] .fg-grass{width:220%;left:-60%;bottom:-10%}
+  [data-fg="hero"] .fg-hill{width:210%;left:-55%}
+  .fg-wall,.fg-stones,.fg-ruins{width:min(78%,520px)}
+  .fg-sakura,.fg-leaves{width:min(62%,380px)}
+  .nav-links{
+    position:fixed;inset:var(--nav-h) 0 0;background:rgba(5,7,10,.96);backdrop-filter:blur(14px);
+    flex-direction:column;justify-content:center;gap:26px;
+    opacity:0;visibility:hidden;transition:opacity .5s var(--ease),visibility .5s;
+  }
+  .nav-links.open{opacity:1;visibility:visible}
+  .nav-link{font-size:15px;height:auto}
+  .nav-link .alt{display:none}
+  .nav-burger{display:flex}
+  .hero-top{max-width:none}
+  .hero-side,.peek{display:none}
+  .chapters{grid-template-columns:1fr 1fr}
+  .chip{border-bottom:1px solid var(--line-soft);padding-right:14px}
+  .chip .tx p{display:none}
+  .gate-grid,.cur-head{grid-template-columns:1fr}
+  .gate-stats{grid-template-columns:1fr 1fr;gap:26px}
+  .cur{grid-template-columns:1fr}
+  .les,.les:nth-child(1),.les:nth-child(2){grid-column:1;border-right:0;border-bottom:1px solid var(--line-soft)}
+  .les:last-child{border-bottom:0}
+  .foot-grid{grid-template-columns:1fr 1fr}
+  .foot-brand{grid-column:1 / -1;padding-right:0}
+  .foot-base{flex-direction:column;gap:10px}
+  .rail{display:none}
+  .fin-v{display:none}
+}
+@media (max-width:620px){
+  .cards{grid-template-columns:1fr}
+  .card:nth-child(1){grid-column:1}
+  .chip{padding:14px 12px 13px 0}
+  .chip .num{font-size:19px}
+  .foot-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  [data-rv]{opacity:1;transform:none}
+  .mask-line>span{transform:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="grade" aria-hidden="true"></div>
+<div id="vignette"></div>
+<div id="grain"></div>
+<div class="cur-dot" id="cursor"></div>
+
+<!-- ======================================================== ## HTML PRELOADER -->
+<div id="pre">
+  <div class="pre-in">
+    <div class="pre-mark">
+      <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+        <circle cx="22" cy="24" r="9.5" stroke="#e0231c" stroke-width="1.2"/>
+        <path d="M6 12h32M9.5 17h25M22 8v28" stroke="#dfe7e0" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div class="pre-jp jp">影の道</div>
+    <div class="pre-bar"><i id="pre-fill"></i></div>
+    <div class="pre-meta"><span>Raising the mountain temple</span><b><span id="pre-pct">0</span>%</b></div>
+  </div>
+</div>
+
+<!-- ======================================================== ## HTML NAV -->
+<header class="nav" id="nav">
+  <a class="brand" href="#top" data-cursor>
+    <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <circle cx="22" cy="25" r="8.6" fill="#e0231c" fill-opacity=".9"/>
+      <path d="M5 13h34M9 18.4h26M22 8.5v27" stroke="#dfe7e0" stroke-width="1.5"/>
+      <path d="M14 35.5h16" stroke="#dfe7e0" stroke-width="1.2" stroke-opacity=".6"/>
+    </svg>
+    <span class="brand-tx"><b>YUKAI</b><i>HIDDEN REALMS OF KYOTO</i></span>
+  </a>
+  <nav class="nav-links" id="navlinks">
+    <a class="nav-link" href="#gate" data-cursor><span>Temples</span><span class="alt jp">伽藍</span></a>
+    <a class="nav-link" href="#pathways" data-cursor><span>Gardens</span><span class="alt jp">庭園</span></a>
+    <a class="nav-link" href="#lessons" data-cursor><span>Rituals</span><span class="alt jp">神事</span></a>
+    <a class="nav-link" href="#eternity" data-cursor><span>Afterlight</span><span class="alt jp">残光</span></a>
+  </nav>
+  <button class="nav-burger" id="burger" aria-label="Menu" data-cursor><i></i><i></i></button>
+</header>
+
+<div class="page" id="top">
+
+<!-- ======================================================== ## HTML HERO -->
+<section class="hero" id="hero" data-cam="0">
+  <div class="fg" data-fg="hero" aria-hidden="true">
+    <span class="fg-el fg-mound" data-fg-in="up"><img src="tall-grass.webp" alt="" width="1717" height="916" decoding="async"></span>
+    <span class="fg-el fg-grass" data-fg-in="up"><img src="tall-grass.webp" alt="" width="1717" height="916" decoding="async"></span>
+    <span class="fg-el fg-bush" data-fg-in="up"><img src="garden-bush.webp" alt="" width="1717" height="876" decoding="async"></span>
+    <span class="fg-el fg-leaves fg-el--sway" data-fg-in="right"><img src="maple-leaves.webp" alt="" width="1536" height="1024" decoding="async"></span>
+  </div>
+  <div class="hero-top">
+    <div class="eyebrow" data-rv="fade"><span class="dot"></span> Chapter 00 — The Hidden Gate</div>
+    <h1 class="display h-hero">
+      <span class="mask-line"><span>Where stillness</span></span>
+      <span class="mask-line"><span>reveals the</span></span>
+      <span class="mask-line"><span>unseen.</span></span>
+    </h1>
+    <p class="hero-sub body" data-rv="up">Enter Kyoto through its quiet thresholds, where ritual, craft, and memory shape the path.</p>
+  </div>
+
+  <div class="hero-spacer"></div>
+
+  <div class="hero-foot">
+    <div class="hero-cue" data-rv="fade"><span>Scroll to enter</span><span class="track"><i></i></span></div>
+    <div class="chapters" id="chips">
+      <div class="chip" data-chip="0" data-rv="up" data-cursor><span class="num">01</span>
+        <span class="tx"><b>Thresholds</b><p>Discover the hidden gates that open on to deeper paths.</p></span></div>
+      <div class="chip" data-chip="1" data-rv="up" data-cursor><span class="num">02</span>
+        <span class="tx"><b>Still Gardens</b><p>Witness the courts where silence gently unfolds.</p></span></div>
+      <div class="chip" data-chip="2" data-rv="up" data-cursor><span class="num">03</span>
+        <span class="tx"><b>Sacred Craft</b><p>Embrace the hands and heritage that shape devotion.</p></span></div>
+      <div class="chip" data-chip="3" data-rv="up" data-cursor><span class="num">04</span>
+        <span class="tx"><b>Night Rituals</b><p>Explore the rites that awaken when the day is done.</p></span></div>
+    </div>
+  </div>
+
+  <a class="peek" href="#pathways" data-view="3" data-rv="fade" data-cursor aria-label="Preview: Sanmon, before the bell">
+    <span class="peek-fr" data-frame></span>
+    <span class="peek-play"><svg viewBox="0 0 22 22" fill="none"><path d="M8 5.6 16.4 11 8 16.4z" fill="#dfe7e0"/></svg></span>
+    <span class="peek-cap"><b class="jp">山門</b><i>Sanmon — before the bell</i></span>
+  </a>
+
+  <div class="word-fb" aria-hidden="true">YUKAI</div>
+
+  <div class="hero-side" data-rv="up"><span class="v jp">影の道</span></div>
+</section>
+
+<!-- ======================================================== ## HTML CHAPTER I — THE SANMON -->
+<section class="sec" id="gate" data-cam="1">
+  <div class="fg" data-fg="gate" aria-hidden="true">
+    <span class="fg-el fg-wall" data-fg-in="left"><img src="temple-wall.webp" alt="" width="1269" height="693" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-pine" data-fg-in="right"><img src="pine-tree.webp" alt="" width="832" height="1248" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-grass" data-fg-in="up"><img src="tall-grass.webp" alt="" width="1261" height="499" loading="lazy" decoding="async"></span>
+  </div>
+  <div class="sec-head" data-rv="fade">
+    <span class="k"><b>01</b> — The Sanmon</span><span class="rule"></span><span class="k jp">山門</span>
+  </div>
+  <div class="gate-grid">
+    <h2 class="display h-sec">
+      <span class="mask-line"><span>Charred cypress, worn</span></span>
+      <span class="mask-line"><span>stone, one gate</span></span>
+      <span class="mask-line"><span>left open.</span></span>
+    </h2>
+    <div class="gate-copy">
+      <p class="lead" data-rv="up">Yukai begins where the city stops: a mountain gate of cedar burned black, standing in its own weather. The soot is not decoration. It is how a board is taught to survive a hundred rainy seasons, and the first thing this place asks you to understand.</p>
+      <p class="body" data-rv="up">Climb the worn steps and the worship hall lifts out of the mist, its paper screens lit from inside like a lantern the size of a house. Above the eaves a vermilion moon holds its place, patient, half hidden. Nothing here is in a hurry. Neither, for the next ninety minutes, are you.</p>
+      <a class="arrowlink" href="#pathways" data-rv="fade" data-cursor>
+        <span>Cross the threshold</span>
+        <span class="ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
+      </a>
+    </div>
+  </div>
+  <div class="gate-stats" data-rv="up">
+    <div><b>05</b><span>Chapters</span></div>
+    <div><b>92</b><span>Minutes</span></div>
+    <div><b>07</b><span>Courts</span></div>
+    <div><b>∞</b><span>Stillness</span></div>
+  </div>
+</section>
+
+<!-- ======================================================== ## HTML CHAPTER II — STILL GARDENS -->
+<section class="sec" id="pathways" data-cam="2">
+  <div class="fg" data-fg="pathways" aria-hidden="true">
+    <span class="fg-el fg-sakura fg-el--sway" data-fg-in="left"><img src="sakura-branch.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-leaves fg-el--sway" data-fg-in="right"><img src="maple-leaves.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-lantern" data-fg-in="up"><img src="stone-lantern.webp" alt="" width="1024" height="1499" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-bush" data-fg-in="up"><img src="garden-bush.webp" alt="" width="1717" height="876" loading="lazy" decoding="async"></span>
+  </div>
+  <div class="sec-head" data-rv="fade">
+    <span class="k"><b>02</b> — Still Gardens</span><span class="rule"></span><span class="k jp">庭園</span>
+  </div>
+  <div class="cards" id="cards">
+    <article class="card" data-rv="up" data-view="0" data-cursor>
+      <div class="card-fr" data-frame>
+        <span class="card-ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
+        <i class="glow" style="--gx:80.2%;--gy:23.9%;--gr:22px;--gt:6.1s;--gt2:9.7s;--gc1:rgba(255,142,108,.50);--gc2:rgba(212,56,38,.24)"></i>
+        <div class="card-lab"><b>Approach</b><span class="jp">参道</span></div>
+      </div>
+      <div class="card-meta"><span>The long climb</span><span>01 / 03</span></div>
+    </article>
+    <article class="card" data-rv="up" data-view="1" data-cursor>
+      <div class="card-fr" data-frame>
+        <span class="card-ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
+        <i class="glow glow--flame" style="--gx:70.5%;--gy:47.2%;--gr:14px;--gt:3.7s;--gt2:5.3s;--gc1:rgba(255,198,124,.62);--gc2:rgba(226,118,40,.30)"></i>
+        <div class="card-lab"><b>Lanterns</b><span class="jp">灯籠</span></div>
+      </div>
+      <div class="card-meta"><span>Lantern court</span><span>02 / 03</span></div>
+    </article>
+    <article class="card" data-rv="up" data-view="2" data-cursor>
+      <div class="card-fr" data-frame>
+        <span class="card-ar"><svg viewBox="0 0 14 14" fill="none"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg></span>
+        <i class="glow" style="--gx:48.0%;--gy:16.8%;--gr:20px;--gt:7.3s;--gt2:11.2s;--gc1:rgba(255,138,104,.52);--gc2:rgba(208,54,36,.24)"></i>
+        <div class="card-lab"><b>Moonwater</b><span class="jp">月影</span></div>
+      </div>
+      <div class="card-meta"><span>The wet court</span><span>03 / 03</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== ## HTML CHAPTER III — SACRED CRAFT -->
+<section class="sec" id="lessons" data-cam="3">
+  <div class="fg" data-fg="lessons" aria-hidden="true">
+    <span class="fg-el fg-wall fg-el--flip" data-fg-in="right"><img src="temple-wall.webp" alt="" width="1536" height="884" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-stones" data-fg-in="up"><img src="basalt-stones.webp" alt="" width="1536" height="996" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-grass" data-fg-in="up"><img src="tall-grass.webp" alt="" width="1717" height="916" loading="lazy" decoding="async"></span>
+  </div>
+  <div class="sec-head" data-rv="fade">
+    <span class="k"><b>03</b> — Sacred Craft</span><span class="rule"></span><span class="k jp">手業</span>
+  </div>
+  <div class="cur-head">
+    <h2 class="display h-sec">
+      <span class="mask-line"><span>Five chapters.</span></span>
+      <span class="mask-line"><span>Ninety minutes.</span></span>
+      <span class="mask-line"><span>One quiet mind.</span></span>
+    </h2>
+    <p class="body-lg" data-rv="up">Each chapter is a walk, not a lecture. You arrive at the gate, climb the steps, sit with the lantern, and leave with one thing worth keeping.</p>
+  </div>
+  <div class="cur" id="cur">
+    <div class="les" data-les="0" data-cursor><span class="les-img" aria-hidden="true"><img src="temple-wall.webp" alt="" width="1536" height="884" loading="lazy" decoding="async"></span><span class="k">01</span>
+      <h3>The Hidden Gate<em class="jp">山門</em></h3>
+      <p>Why a gate is a sentence, and what you agree to when you walk under one.</p>
+      <span class="t">14 min</span><i class="bar"></i></div>
+    <div class="les" data-les="1" data-cursor><span class="les-img" aria-hidden="true"><img src="hill.webp" alt="" width="1774" height="887" loading="lazy" decoding="async"></span><span class="k">02</span>
+      <h3>Borrowed Scenery<em class="jp">借景</em></h3>
+      <p>Shakkei: composing with a mountain you will never own.</p>
+      <span class="t">18 min</span><i class="bar"></i></div>
+    <div class="les" data-les="2" data-cursor><span class="les-img" aria-hidden="true"><img src="pine-tree.webp" alt="" width="1024" height="1438" loading="lazy" decoding="async"></span><span class="k">03</span>
+      <h3>Charred Cypress<em class="jp">焼杉</em></h3>
+      <p>Yakisugi: burning a board black so the weather will let it live.</p>
+      <span class="t">21 min</span><i class="bar"></i></div>
+    <div class="les" data-les="3" data-cursor><span class="les-img" aria-hidden="true"><img src="stone-lantern.webp" alt="" width="1024" height="1499" loading="lazy" decoding="async"></span><span class="k">04</span>
+      <h3>Lantern Light<em class="jp">灯籠</em></h3>
+      <p>How a single ember decides the scale of everything around it.</p>
+      <span class="t">17 min</span><i class="bar"></i></div>
+    <div class="les" data-les="4" data-cursor><span class="les-img" aria-hidden="true"><img src="maple-leaves.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"></span><span class="k">05</span>
+      <h3>The Vermilion Moon<em class="jp">朱月</em></h3>
+      <p>Why the moon burns red over the valley, and what the garden does with it.</p>
+      <span class="t">22 min</span><i class="bar"></i></div>
+  </div>
+</section>
+
+<!-- ======================================================== ## HTML CHAPTER IV — AFTERLIGHT -->
+<section class="sec fin" id="eternity" data-cam="4">
+  <div class="fg" data-fg="eternity" aria-hidden="true">
+    <span class="fg-el fg-hill" data-fg-in="up"><img src="hill.webp" alt="" width="1774" height="887" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-lantern" data-fg-in="left"><img src="stone-lantern.webp" alt="" width="1024" height="1499" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-wall" data-fg-in="right"><img src="temple-wall.webp" alt="" width="1536" height="884" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-grass" data-fg-in="up"><img src="tall-grass.webp" alt="" width="1717" height="916" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-sakura" data-fg-in="left"><img src="sakura-branch.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"></span>
+  </div>
+  <div class="eyebrow" data-rv="fade"><span class="dot"></span> Chapter 04 — Afterlight</div>
+  <h2 class="display h-sec" style="font-size:clamp(56px,9vw,150px);letter-spacing:-.04em">
+    <span class="mask-line"><span>Afterlight</span></span>
+  </h2>
+  <p class="body-lg" data-rv="up">The gate does not close behind you. Take the walk whenever the noise gets loud: it is always the same path, and never the same light.</p>
+  <a class="cta" href="#top" data-rv="fade" data-cursor>
+    <i></i><span>Begin the walk</span>
+    <svg viewBox="0 0 14 14" fill="none" width="13" height="13"><path d="M3 11 11 3M5 3h6v6" stroke="#dfe7e0" stroke-width="1.3"/></svg>
+  </a>
+  <div class="fin-v" aria-hidden="true"><span>Afterlight</span></div>
+</section>
+
+<!-- ======================================================== ## HTML FOOTER -->
+<footer class="foot" data-cam="5">
+  <div class="fg" data-fg="foot" aria-hidden="true">
+    <span class="fg-el fg-bush" data-fg-in="up"><img src="garden-bush.webp" alt="" width="1717" height="876" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-grass" data-fg-in="up"><img src="tall-grass.webp" alt="" width="1717" height="916" loading="lazy" decoding="async"></span>
+    <span class="fg-el fg-stones" data-fg-in="up"><img src="basalt-stones.webp" alt="" width="1536" height="996" loading="lazy" decoding="async"></span>
+  </div>
+  <div class="foot-grid">
+    <div class="foot-brand" data-rv="up">
+      <svg viewBox="0 0 44 44" fill="none" width="34" height="34" aria-hidden="true">
+        <circle cx="22" cy="25" r="8.6" fill="#e0231c" fill-opacity=".9"/>
+        <path d="M5 13h34M9 18.4h26M22 8.5v27" stroke="#dfe7e0" stroke-width="1.5"/>
+      </svg>
+      <p>A five-chapter night walk through a Kyoto mountain temple. Three illustrated garden field notes sit inside a live Three.js sanctuary.</p>
+    </div>
+    <div data-rv="up"><h4>Chapters</h4><ul>
+      <li><a href="#gate" data-cursor>The Sanmon</a></li>
+      <li><a href="#pathways" data-cursor>Still Gardens</a></li>
+      <li><a href="#lessons" data-cursor>Sacred Craft</a></li>
+      <li><a href="#eternity" data-cursor>Afterlight</a></li>
+    </ul></div>
+    <div data-rv="up"><h4>Practice</h4><ul>
+      <li><a href="#lessons" data-cursor>Borrowed scenery</a></li>
+      <li><a href="#lessons" data-cursor>Lantern light</a></li>
+      <li><a href="#lessons" data-cursor>Charred cypress</a></li>
+      <li><a href="#lessons" data-cursor>Raked gravel</a></li>
+    </ul></div>
+    <div data-rv="up"><h4>Elsewhere</h4><ul>
+      <li><a href="#top" data-cursor>Journal</a></li>
+      <li><a href="#top" data-cursor>Field notes</a></li>
+      <li><a href="#top" data-cursor>Colophon</a></li>
+    </ul></div>
+  </div>
+  <div class="foot-base">
+    <span>© 2026 Yukai — Yukai no Michi</span>
+    <span class="jp">静けさは一つの技である</span>
+    <span>WebGL · Onest · Kyoto</span>
+  </div>
+</footer>
+
+</div><!-- /.page -->
+
+<!-- ## HTML FG-SKY — the chapter that owns the viewport parks its near plane
+     here. It is fixed, so the plates never travel with the scroll. -->
+<div id="fg-sky" aria-hidden="true"></div>
+
+<div class="rail" id="rail"></div>
+
+<script src="three.min.js"></script>
+<script>
+/* =====================================================================
+   ## JS BOOT — helpers, feature test, shared state
+   ===================================================================== */
+(function(){
+'use strict';
+
+var doc = document, win = window;
+var $  = function(s,c){ return (c||doc).querySelector(s); };
+var $$ = function(s,c){ return Array.prototype.slice.call((c||doc).querySelectorAll(s)); };
+var clamp = function(v,a,b){ return v<a?a:(v>b?b:v); };
+var lerp  = function(a,b,t){ return a+(b-a)*t; };
+var smooth= function(t){ return t*t*(3-2*t); };
+var rand  = function(a,b){ return a+Math.random()*(b-a); };
+var REDUCED = win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var canvas = $('#gl');
+var hasGL = (function(){
+  try{
+    var c = doc.createElement('canvas');
+    return !!(win.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+  }catch(e){ return false; }
+})();
+if (!win.THREE || !hasGL) doc.body.classList.add('no-gl');
+
+/* =====================================================================
+   ## JS GRAIN — a 180px tile of monochrome noise, laid over everything
+   ===================================================================== */
+(function grain(){
+  var s = 180, c = doc.createElement('canvas'); c.width = c.height = s;
+  var x = c.getContext('2d'), im = x.createImageData(s,s), d = im.data;
+  for (var i=0;i<d.length;i+=4){
+    var v = 128 + (Math.random()-.5)*255;
+    d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+  }
+  x.putImageData(im,0,0);
+  $('#grain').style.backgroundImage = 'url('+c.toDataURL()+')';
+})();
+
+/* =====================================================================
+   ## JS CURSOR — a ring that lags the pointer and swells over targets
+   ===================================================================== */
+(function cursor(){
+  var el = $('#cursor'), tx=0, ty=0, cx=0, cy=0, on=false;
+  win.addEventListener('pointermove', function(e){
+    if (e.pointerType === 'touch') return;
+    tx = e.clientX; ty = e.clientY;
+    if (!on){ on = true; cx=tx; cy=ty; el.classList.add('on'); }
+  }, {passive:true});
+  doc.addEventListener('pointerover', function(e){
+    var t = e.target.closest ? e.target.closest('[data-cursor],a,button') : null;
+    el.classList.toggle('hot', !!t);
+  });
+  (function tick(){
+    cx += (tx-cx)*.16; cy += (ty-cy)*.16;
+    el.style.transform = 'translate3d('+cx.toFixed(2)+'px,'+cy.toFixed(2)+'px,0)';
+    requestAnimationFrame(tick);
+  })();
+})();
+
+if (!win.THREE || !hasGL){ bootDOM(0); return; }
+
+/* =====================================================================
+   ## JS TEXTURES — every surface in this scene is painted in a 2D canvas
+   ===================================================================== */
+var TEX = {};
+function cv(w,h){ var c=doc.createElement('canvas'); c.width=w; c.height=h; return c; }
+function toTex(c, rep){
+  var t = new THREE.CanvasTexture(c);
+  t.anisotropy = 4;
+  if (rep){ t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); }
+  if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+/* charred cedar — yakisugi. Vertical grain, soot black, faint ember-brown */
+TEX.charred = (function(){
+  var c = cv(256,256), x = c.getContext('2d');
+  x.fillStyle = '#0d0f11'; x.fillRect(0,0,256,256);
+  for (var i=0;i<230;i++){
+    var gx = Math.random()*256, w = rand(.6,2.4), a = rand(.03,.14);
+    x.strokeStyle = 'rgba(' + (Math.random()<.13 ? '96,58,40' : '30,34,38') + ',' + a + ')';
+    x.lineWidth = w; x.beginPath();
+    x.moveTo(gx,0);
+    for (var y=0;y<=256;y+=18) x.lineTo(gx + Math.sin(y*.05+i)*2.4, y);
+    x.stroke();
+  }
+  return toTex(c,[3,3]);
+})();
+
+/* worn stone — the steps, the plinths, the lantern bodies */
+TEX.stone = (function(){
+  var c = cv(256,256), x = c.getContext('2d');
+  x.fillStyle = '#22262a'; x.fillRect(0,0,256,256);
+  for (var i=0;i<2600;i++){
+    var v = rand(-16,16);
+    x.fillStyle = 'rgba(' + (140+v|0) + ',' + (146+v|0) + ',' + (150+v|0) + ',' + rand(.02,.09) + ')';
+    x.fillRect(Math.random()*256, Math.random()*256, rand(1,3.4), rand(1,3.4));
+  }
+  for (var j=0;j<9;j++){
+    x.strokeStyle = 'rgba(8,10,12,.4)'; x.lineWidth = rand(.6,1.6);
+    x.beginPath(); x.moveTo(Math.random()*256, Math.random()*256);
+    x.lineTo(Math.random()*256, Math.random()*256); x.stroke();
+  }
+  return toTex(c,[2,2]);
+})();
+
+/* kawara roof tile — rows of half-round ridges reading as a dark corrugation */
+TEX.tile = (function(){
+  var c = cv(256,256), x = c.getContext('2d');
+  x.fillStyle = '#151a20'; x.fillRect(0,0,256,256);
+  for (var i=0;i<16;i++){
+    var px = i*16;
+    var g = x.createLinearGradient(px,0,px+16,0);
+    g.addColorStop(0,   'rgba(6,8,11,.85)');
+    g.addColorStop(.45, 'rgba(46,55,66,.55)');
+    g.addColorStop(.55, 'rgba(58,68,80,.42)');
+    g.addColorStop(1,   'rgba(6,8,11,.85)');
+    x.fillStyle = g; x.fillRect(px,0,16,256);
+  }
+  for (var r=0;r<256;r+=32){
+    x.fillStyle = 'rgba(4,6,8,.5)'; x.fillRect(0,r,256,2.5);
+  }
+  return toTex(c,[5,3]);
+})();
+
+/* shoji — a paper screen with its lattice, lit from behind by the hall */
+TEX.shoji = (function(){
+  var c = cv(128,192), x = c.getContext('2d');
+  var g = x.createLinearGradient(0,0,0,192);
+  g.addColorStop(0,'#f2d49a'); g.addColorStop(.55,'#e5bd79'); g.addColorStop(1,'#c99a55');
+  x.fillStyle = g; x.fillRect(0,0,128,192);
+  for (var i=0;i<900;i++){
+    x.fillStyle = 'rgba(255,236,196,'+rand(.02,.10)+')';
+    x.fillRect(Math.random()*128, Math.random()*192, 2, 2);
+  }
+  x.strokeStyle = 'rgba(46,32,18,.62)'; x.lineWidth = 3;
+  for (var cx2=1;cx2<4;cx2++){ x.beginPath(); x.moveTo(cx2*32,0); x.lineTo(cx2*32,192); x.stroke(); }
+  for (var cy2=1;cy2<6;cy2++){ x.beginPath(); x.moveTo(0,cy2*32); x.lineTo(128,cy2*32); x.stroke(); }
+  x.strokeStyle = 'rgba(30,20,10,.9)'; x.lineWidth = 7; x.strokeRect(0,0,128,192);
+  return toTex(c);
+})();
+
+/* the vermilion moon: craters, limb darkening, and the shadow that bites it */
+TEX.moon = (function(){
+  var S = 512, c = cv(S,S), x = c.getContext('2d'), r = S/2;
+  var g = x.createRadialGradient(r*.82, r*.72, r*.06, r, r, r);
+  g.addColorStop(0,   '#f7909b');
+  g.addColorStop(.42, '#e2606f');
+  g.addColorStop(.78, '#c03f4c');
+  g.addColorStop(1,   '#8e2733');
+  x.beginPath(); x.arc(r,r,r-2,0,7); x.fillStyle = g; x.fill();
+  for (var i=0;i<26;i++){
+    var a = Math.random()*6.284, d = Math.sqrt(Math.random())*(r-40);
+    var mx = r+Math.cos(a)*d, my = r+Math.sin(a)*d, mr = rand(9,44);
+    var cg = x.createRadialGradient(mx,my,0,mx,my,mr);
+    cg.addColorStop(0,'rgba(96,30,40,'+rand(.16,.4)+')');
+    cg.addColorStop(1,'rgba(96,30,40,0)');
+    x.fillStyle = cg; x.beginPath(); x.arc(mx,my,mr,0,7); x.fill();
+  }
+  /* the bite — a hard-edged shadow disc, cut out so the sky shows through */
+  x.globalCompositeOperation = 'destination-out';
+  x.beginPath(); x.arc(r*.30, r*1.06, r*.74, 0, 7); x.fill();
+  x.globalCompositeOperation = 'source-over';
+  return toTex(c);
+})();
+
+/* one maple leaf, five lobes, drawn from a polar profile */
+TEX.leaf = (function(){
+  var S = 64, c = cv(S,S), x = c.getContext('2d');
+  x.translate(S/2,S/2);
+  x.beginPath();
+  for (var a=0;a<=6.2832;a+=.02){
+    /* five lobes with a deep notch between each, plus a stem spike downward */
+    var k = Math.abs(Math.cos(2.5*a));
+    var rr = (S/2-3) * (.36 + .64*Math.pow(k,.55));
+    x.lineTo(Math.cos(a-1.5708)*rr, Math.sin(a-1.5708)*rr*1.02);
+  }
+  x.closePath();
+  var g = x.createRadialGradient(0,-4,1,0,0,S/2);
+  g.addColorStop(0,'#ff5a4a'); g.addColorStop(.6,'#d82a24'); g.addColorStop(1,'#8c1418');
+  x.fillStyle = g; x.fill();
+  x.strokeStyle = 'rgba(60,8,10,.55)'; x.lineWidth = 1.1;
+  for (var v=0;v<5;v++){
+    var va = -1.5708 + (v-2)*.62;
+    x.beginPath(); x.moveTo(0,4); x.lineTo(Math.cos(va)*24, Math.sin(va)*24); x.stroke();
+  }
+  return toTex(c);
+})();
+
+/* a soft round falloff — used for every ember, firefly and light bloom */
+TEX.glow = (function(){
+  var S = 128, c = cv(S,S), x = c.getContext('2d'), r = S/2;
+  var g = x.createRadialGradient(r,r,0,r,r,r);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(.18, 'rgba(255,255,255,.72)');
+  g.addColorStop(.45, 'rgba(255,255,255,.20)');
+  g.addColorStop(1,   'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  return toTex(c);
+})();
+
+/* dense cedar foliage, used as a billboard mass on the treeline */
+TEX.foliage = (function(){
+  var S = 256, c = cv(S,S), x = c.getContext('2d');
+  for (var i=0;i<620;i++){
+    var a = Math.random()*6.284, d = Math.pow(Math.random(),.7)*(S/2-8);
+    var px = S/2+Math.cos(a)*d*rand(.6,1), py = S/2+Math.sin(a)*d*rand(.5,1) - 10;
+    var rr = rand(4,15), f = 1 - d/(S/2);
+    x.fillStyle = 'rgba('+(10+22*f|0)+','+(20+30*f|0)+','+(16+24*f|0)+','+rand(.25,.7)+')';
+    x.beginPath(); x.arc(px,py,rr,0,7); x.fill();
+  }
+  return toTex(c);
+})();
+
+/* =====================================================================
+   ## JS STAGE — renderer, scene, fog, the moonlight rig
+   ===================================================================== */
+var W = win.innerWidth, H = win.innerHeight, DPR = Math.min(win.devicePixelRatio||1, 1.85);
+var FOG_C = 0x080b11;
+
+var renderer = new THREE.WebGLRenderer({ canvas:canvas, antialias:DPR<1.6, alpha:false, powerPreference:'high-performance' });
+renderer.setPixelRatio(DPR);
+renderer.setSize(W,H,false);
+renderer.setClearColor(FOG_C, 1);
+renderer.autoClear = false;
+if ('outputEncoding' in renderer && THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(FOG_C, 0.0168);
+
+var camera = new THREE.PerspectiveCamera(36, W/H, .35, 260);
+camera.position.set(0, 4.05, 13.6);
+
+/* moonlight: one cool key from the upper right, a colder fill from the sky,
+   and a low vermilion bounce so the gate never goes fully black */
+var key = new THREE.DirectionalLight(0xc2d4f5, .60);
+key.position.set(26, 30, 8);
+scene.add(key);
+scene.add(new THREE.HemisphereLight(0x35486a, 0x070b12, .72));
+var bounce = new THREE.PointLight(0xff5a3c, .98, 28, 2);
+bounce.position.set(0, 1.6, -3.4);
+scene.add(bounce);
+var hallLight = new THREE.PointLight(0xffb066, 3.5, 50, 2);
+hallLight.position.set(0, 8.6, -26.5);
+scene.add(hallLight);
+var lanternLight = new THREE.PointLight(0xffc074, 1.7, 20, 2);
+lanternLight.position.set(-5.4, 2.4, -12);
+scene.add(lanternLight);
+
+var WORLD = new THREE.Group(); scene.add(WORLD);
+var SKY   = new THREE.Group(); scene.add(SKY);
+
+/* =====================================================================
+   ## JS MATERIALS
+   ===================================================================== */
+var MAT = {
+  stone:  new THREE.MeshStandardMaterial({ map:TEX.stone,   color:0x6b737b, roughness:.94, metalness:.02 }),
+  stoneD: new THREE.MeshStandardMaterial({ map:TEX.stone,   color:0x474e56, roughness:.96, metalness:.02 }),
+  wood:   new THREE.MeshStandardMaterial({ map:TEX.charred, color:0x333b45, roughness:.9,  metalness:.03 }),
+  tile:   new THREE.MeshStandardMaterial({ map:TEX.tile,    color:0x44505e, roughness:.82, metalness:.08, side:THREE.DoubleSide }),
+  verm:   new THREE.MeshStandardMaterial({ color:0x5f120f, roughness:.82, metalness:.03 }),
+  vermLit:new THREE.MeshStandardMaterial({ color:0x7d1813, roughness:.78, metalness:.03 }),
+  shoji:  new THREE.MeshBasicMaterial({ map:TEX.shoji, toneMapped:false }),
+  ember:  new THREE.MeshBasicMaterial({ color:0xffcf94, toneMapped:false }),
+  dark:   new THREE.MeshStandardMaterial({ color:0x171e26, roughness:.95, metalness:0 })
+};
+
+/* =====================================================================
+   ## JS ROOF — the one piece of real geometry maths in the build.
+   A gable whose slope is concave (mukuri/sori) and whose corners flick up.
+     y(x,z) = H * (1 - t)^sweep  +  flick * (|x| / (W/2))^6 * t^2 ,  t = |z| / (D/2)
+   The surface is generated twice, offset by a thickness, then skinned
+   around the perimeter so the eave reads as a solid slab from below.
+   ===================================================================== */
+function roofGeo(w, d, h, sweep, flick, th, hip){
+  sweep = sweep||1.62; flick = flick||1.1; th = th||.34;
+  var NX = hip ? 16 : 12, NZ = 16, i, j;
+  var pos = [], uv = [], idx = [];
+  function yAt(x, z){
+    var u = Math.abs(x) / (w/2), v = Math.abs(z) / (d/2);
+    if (hip){
+      /* a pyramidal hip: the fall-off follows whichever edge is nearer, and
+         the lift is strongest where the two eaves meet at a corner */
+      var t2 = Math.max(u, v);
+      return h * Math.pow(1-t2, sweep) + Math.pow(Math.min(u,v), 4) * t2*t2 * flick;
+    }
+    var t = v;
+    var base = h * Math.pow(1-t, sweep);
+    var edge = Math.pow(u, 6) * t*t * flick;
+    return base + edge;
+  }
+  /* two stacked surfaces: 0 = top, 1 = underside */
+  for (var s=0;s<2;s++){
+    for (j=0;j<=NZ;j++){
+      var z = -d/2 + d*(j/NZ);
+      for (i=0;i<=NX;i++){
+        var x = -w/2 + w*(i/NX);
+        pos.push(x, yAt(x,z) - (s? th : 0), z);
+        uv.push(i/NX, j/NZ);
+      }
+    }
+  }
+  var per = (NX+1)*(NZ+1);
+  function quad(a,b,c,e){ idx.push(a,b,c, c,b,e); }
+  for (j=0;j<NZ;j++) for (i=0;i<NX;i++){
+    var a = j*(NX+1)+i, b = a+1, c = a+(NX+1), e = c+1;
+    quad(a,c,b,e);                                     /* top    */
+    quad(per+a, per+b, per+c, per+e);                  /* bottom */
+  }
+  /* skirt the four edges so the slab has depth */
+  for (i=0;i<NX;i++){
+    var f0 = i, f1 = i+1, b0 = per+i, b1 = per+i+1;
+    quad(f0, b0, f1, b1);
+    var r0 = NZ*(NX+1)+i, r1 = r0+1;
+    quad(r0, r1, per+r0, per+r1);
+  }
+  for (j=0;j<NZ;j++){
+    var l0 = j*(NX+1), l1 = (j+1)*(NX+1);
+    quad(l0, l1, per+l0, per+l1);
+    var g0 = l0+NX, g1 = l1+NX;
+    quad(g0, per+g0, g1, per+g1);
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/* =====================================================================
+   ## JS WORLD — ground, the long flight of steps, the terrace
+   ===================================================================== */
+var STEP_N = 24, STEP_RISE = .245, STEP_RUN = .60, STEP_Z0 = -9.5;
+var TERRACE_Y = STEP_N * STEP_RISE;                 /* 5.88 */
+var TERRACE_Z = STEP_Z0 - STEP_N * STEP_RUN;        /* -20.6 */
+
+(function ground(){
+  var g = new THREE.Mesh(new THREE.PlaneGeometry(400,400), MAT.stoneD.clone());
+  g.material.color.setHex(0x1f242a);
+  g.rotation.x = -Math.PI/2;
+  WORLD.add(g);
+
+  /* the approach: a raked gravel apron in front of the gate */
+  var ap = new THREE.Mesh(new THREE.PlaneGeometry(26,16), new THREE.MeshStandardMaterial({
+    map:TEX.stone, color:0x3f464d, roughness:.98, metalness:0
+  }));
+  ap.rotation.x = -Math.PI/2; ap.position.set(0,.02,2.4);
+  WORLD.add(ap);
+})();
+
+(function steps(){
+  var half = new THREE.Group();
+  for (var i=0;i<STEP_N;i++){
+    var w = lerp(14.4, 11.2, i/STEP_N);
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, STEP_RISE, STEP_RUN + .04), MAT.stone);
+    m.position.set(0, i*STEP_RISE + STEP_RISE/2, STEP_Z0 - i*STEP_RUN);
+    half.add(m);
+  }
+  /* cheek walls either side, following the same rake */
+  for (var s=-1;s<=1;s+=2){
+    var len = STEP_N*STEP_RUN;
+    var wall = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, len), MAT.stoneD);
+    wall.position.set(s*7.4, TERRACE_Y*.5, STEP_Z0 - len/2);
+    wall.rotation.x = -Math.atan2(TERRACE_Y, len);
+    half.add(wall);
+  }
+  var terrace = new THREE.Mesh(new THREE.BoxGeometry(38, .9, 22), MAT.stone);
+  terrace.position.set(0, TERRACE_Y - .45, TERRACE_Z - 10);
+  half.add(terrace);
+  WORLD.add(half);
+})();
+
+/* =====================================================================
+   ## JS WORLD — the sanmon: two pillars, a straight nuki, and a kasagi
+   whose curve is sampled from  y = -k x^2  so the ends lift.
+   ===================================================================== */
+(function torii(){
+  var g = new THREE.Group();
+  var PH = 7.6, SPAN = 2.95, Z = -7.0;
+
+  for (var s=-1;s<=1;s+=2){
+    var p = new THREE.Mesh(new THREE.CylinderGeometry(.30,.38,PH,18), MAT.verm);
+    p.position.set(s*SPAN, PH/2, Z); g.add(p);
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(.52,.58,.5,16), MAT.stoneD);
+    base.position.set(s*SPAN, .25, Z); g.add(base);
+  }
+  /* nuki — the straight tie beam */
+  var nuki = new THREE.Mesh(new THREE.BoxGeometry(SPAN*2+1.5,.44,.56), MAT.vermLit);
+  nuki.position.set(0, PH*.74, Z); g.add(nuki);
+  /* gakuzuka — the little post between the two beams */
+  var gz = new THREE.Mesh(new THREE.BoxGeometry(.46,1.05,.46), MAT.verm);
+  gz.position.set(0, PH*.83, Z); g.add(gz);
+
+  /* kasagi + shimaki: 15 short segments laid along a shallow parabola,
+     each rotated to the local tangent so the beam reads as one curve */
+  var SEGS = 15, LEN = SPAN*2+2.6, k = 0.056;
+  for (var i=0;i<SEGS;i++){
+    var u  = (i+.5)/SEGS - .5;
+    var x  = u*LEN;
+    var y  = PH*.93 + k*x*x;
+    var dy = 2*k*x;
+    var seg = new THREE.Mesh(new THREE.BoxGeometry(LEN/SEGS+.05,.40,.86), MAT.vermLit);
+    seg.position.set(x, y, Z);
+    seg.rotation.z = Math.atan(dy);
+    g.add(seg);
+    var cap = new THREE.Mesh(new THREE.BoxGeometry(LEN/SEGS+.05,.22,1.06), MAT.dark);
+    cap.position.set(x, y+.30, Z);
+    cap.rotation.z = Math.atan(dy);
+    g.add(cap);
+  }
+  WORLD.add(g);
+})();
+
+/* =====================================================================
+   ## JS WORLD — halls. One builder, three tiers up the mountain.
+   ===================================================================== */
+function buildHall(o){
+  var g = new THREE.Group();
+  var w = o.w, d = o.d, bh = o.bh;
+
+  var plinth = new THREE.Mesh(new THREE.BoxGeometry(w+2.4, 1.1, d+2.2), MAT.stone);
+  plinth.position.y = .55; g.add(plinth);
+
+  var body = new THREE.Mesh(new THREE.BoxGeometry(w, bh, d), MAT.wood);
+  body.position.y = 1.1 + bh/2; g.add(body);
+
+  /* the lit paper screens along the front face */
+  if (o.win){
+    var n = o.win, gap = w/(n+.6), ww = gap*.62, wh = bh*.62;
+    for (var i=0;i<n;i++){
+      var sx = -w/2 + gap*(i+.8);
+      var sh = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), MAT.shoji);
+      sh.position.set(sx, 1.1 + bh*.54, d/2 + .06);
+      g.add(sh);
+      /* the spill of light that leaves the screen */
+      var sp = new THREE.Mesh(new THREE.PlaneGeometry(ww*3.4, wh*3.0), new THREE.MeshBasicMaterial({
+        map:TEX.glow, color:0xffa858, transparent:true, opacity:.16,
+        blending:THREE.AdditiveBlending, depthWrite:false, fog:false, toneMapped:false
+      }));
+      sp.position.set(sx, 1.1 + bh*.54, d/2 + .5);
+      g.add(sp);
+    }
+    /* the veranda posts that break the row up */
+    for (var p=0;p<=n;p+=2){
+      var col = new THREE.Mesh(new THREE.BoxGeometry(.28, bh, .3), MAT.verm);
+      col.position.set(-w/2 + gap*(p+.2), 1.1 + bh/2, d/2 + .18);
+      g.add(col);
+    }
+  }
+
+  /* the roofs, largest first */
+  var r1 = new THREE.Mesh(roofGeo(w+7, d+6.5, o.rh, 1.66, 1.35, .40), MAT.tile);
+  r1.position.y = 1.1 + bh; g.add(r1);
+  var ridge1 = new THREE.Mesh(new THREE.BoxGeometry(w+7.4, .34, .8), MAT.dark);
+  ridge1.position.y = 1.1 + bh + o.rh; g.add(ridge1);
+
+  if (o.tier){
+    var lw = (w+7)*.66, ld = (d+6.5)*.62, ly = 1.1 + bh + o.rh*.42;
+    var mid = new THREE.Mesh(new THREE.BoxGeometry(lw-4, o.rh*.9, ld-3.4), MAT.wood);
+    mid.position.y = ly + o.rh*.45; g.add(mid);
+    var r2 = new THREE.Mesh(roofGeo(lw, ld, o.rh*.86, 1.7, 1.05, .34), MAT.tile);
+    r2.position.y = ly + o.rh*.9; g.add(r2);
+    var ridge2 = new THREE.Mesh(new THREE.BoxGeometry(lw+.5,.28,.66), MAT.dark);
+    ridge2.position.y = ly + o.rh*.9 + o.rh*.86; g.add(ridge2);
+  }
+  g.position.set(o.x||0, o.y||0, o.z);
+  WORLD.add(g);
+  return g;
+}
+
+/* front worship hall, sitting on the terrace and doing all the lighting */
+buildHall({ w:21, d:10, bh:4.4, rh:3.4, win:9,  tier:true,  z:TERRACE_Z - 7.5, y:TERRACE_Y });
+/* the long low wings either side of it */
+buildHall({ w:12, d:7,  bh:3.0, rh:2.3, win:5,  tier:false, x:-16, z:TERRACE_Z - 4, y:TERRACE_Y });
+buildHall({ w:12, d:7,  bh:3.0, rh:2.3, win:5,  tier:false, x: 16, z:TERRACE_Z - 4, y:TERRACE_Y });
+/* the two silhouettes further up the slope */
+buildHall({ w:26, d:13, bh:4.6, rh:4.0, win:0,  tier:true,  z:TERRACE_Z - 20, y:TERRACE_Y + 0.4 });
+buildHall({ w:32, d:16, bh:5.2, rh:4.6, win:0,  tier:true,  z:TERRACE_Z - 38, y:TERRACE_Y + 2.2 });
+
+/* =====================================================================
+   ## JS WORLD — the goju-no-to. Five shrinking storeys, each a body and a
+   hip roof, under a sorin mast carrying nine rings. It stands off to the
+   left of the compound so the spire breaks the roofline without crossing
+   the moon.
+   ===================================================================== */
+function pagoda(x, y, z, tiers, base, storey){
+  var g = new THREE.Group();
+  tiers = tiers||5; base = base||8.4; storey = storey||2.9;
+
+  var plinth = new THREE.Mesh(new THREE.BoxGeometry(base*.92, 1.0, base*.92), MAT.stone);
+  plinth.position.y = .5; g.add(plinth);
+
+  var top = 1.0;
+  for (var i=0;i<tiers;i++){
+    var k = 1 - i*.108;                     /* each storey draws in a little */
+    var bw = base*k, bh = storey*.52*(1 - i*.05);
+    var body = new THREE.Mesh(new THREE.BoxGeometry(bw*.60, bh, bw*.60), MAT.wood);
+    body.position.y = top + bh/2; g.add(body);
+
+    /* the balcony rail that runs under every storey */
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(bw*.70, .12, bw*.70), MAT.verm);
+    rail.position.y = top + bh*.94; g.add(rail);
+
+    /* four shoji faces, so the tower is lit from inside like the hall */
+    for (var f=0; f<4; f++){
+      var pane = new THREE.Mesh(new THREE.PlaneGeometry(bw*.30, bh*.52), MAT.shoji);
+      pane.position.set(Math.sin(f*Math.PI/2)*bw*.302, top + bh*.52, Math.cos(f*Math.PI/2)*bw*.302);
+      pane.rotation.y = f*Math.PI/2;
+      g.add(pane);
+    }
+    var roof = new THREE.Mesh(roofGeo(bw, bw, storey*.40, 1.72, bw*.16, .22, true), MAT.tile);
+    roof.position.y = top + bh; g.add(roof);
+    top += bh + storey*.30;
+  }
+
+  /* sorin: the bronze mast, its nine rings and the flame finial */
+  var mast = new THREE.Mesh(new THREE.CylinderGeometry(.09,.13, storey*1.5, 8), MAT.dark);
+  mast.position.y = top + storey*.75; g.add(mast);
+  for (var r=0;r<9;r++){
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(.30 - r*.021, .035, 6, 14), MAT.dark);
+    ring.rotation.x = Math.PI/2;
+    ring.position.y = top + storey*.30 + r*(storey*.088);
+    g.add(ring);
+  }
+  var tip = new THREE.Mesh(new THREE.ConeGeometry(.16, .58, 8), MAT.dark);
+  tip.position.y = top + storey*1.56; g.add(tip);
+
+  g.position.set(x, y, z);
+  WORLD.add(g);
+  return g;
+}
+pagoda(-22.5, TERRACE_Y + 2.4, TERRACE_Z - 13, 5, 8.8, 2.90);
+
+/* =====================================================================
+   ## JS WORLD — stone lanterns. Six parts, one ember, one additive bloom.
+   ===================================================================== */
+function lantern(x,y,z,s){
+  var g = new THREE.Group(); s = s||1;
+  var add = function(m,py){ m.position.y = py; g.add(m); return m; };
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.44,.54,.26,10), MAT.stoneD), .13);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.16,.19,1.45,10), MAT.stone), .98);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.38,.30,.16,10), MAT.stone), 1.78);
+  add(new THREE.Mesh(new THREE.BoxGeometry(.54,.56,.54), MAT.stoneD), 2.14);
+  /* the four paper faces of the fire box */
+  for (var f=0;f<4;f++){
+    var pl = new THREE.Mesh(new THREE.PlaneGeometry(.34,.36), MAT.shoji);
+    pl.position.set(Math.sin(f*Math.PI/2)*.276, 2.14, Math.cos(f*Math.PI/2)*.276);
+    pl.rotation.y = f*Math.PI/2;
+    g.add(pl);
+  }
+  var roof = add(new THREE.Mesh(new THREE.ConeGeometry(.66,.40,4), MAT.stoneD), 2.62);
+  roof.rotation.y = Math.PI/4;
+  add(new THREE.Mesh(new THREE.SphereGeometry(.10,8,8), MAT.stoneD), 2.88);
+  var bloom = new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.2), new THREE.MeshBasicMaterial({
+    map:TEX.glow, color:0xffab5c, transparent:true, opacity:.42,
+    blending:THREE.AdditiveBlending, depthWrite:false, fog:true, toneMapped:false
+  }));
+  bloom.position.y = 2.14; bloom.userData.billboard = true;
+  g.add(bloom);
+  g.position.set(x,y,z); g.scale.setScalar(s);
+  WORLD.add(g);
+  return g;
+}
+var BILLBOARDS = [];
+for (var li=0; li<STEP_N; li+=6){
+  var ly = li*STEP_RISE, lz = STEP_Z0 - li*STEP_RUN;
+  BILLBOARDS.push(lantern(-6.5, ly, lz, 1).children[10]);
+  BILLBOARDS.push(lantern( 6.5, ly, lz, 1).children[10]);
+}
+BILLBOARDS.push(lantern(-9.5, TERRACE_Y, TERRACE_Z - 2, 1.25).children[10]);
+BILLBOARDS.push(lantern( 9.5, TERRACE_Y, TERRACE_Z - 2, 1.25).children[10]);
+BILLBOARDS.push(lantern(-7.2, 0, 1.2, 1.1).children[10]);
+BILLBOARDS.push(lantern( 7.2, 0, 1.2, 1.1).children[10]);
+
+/* =====================================================================
+   ## JS WORLD — cedars on the ridge, maples in the near court
+   ===================================================================== */
+(function trees(){
+  var darkFoliage = new THREE.MeshBasicMaterial({ map:TEX.foliage, transparent:true, color:0x1c262a, depthWrite:false, fog:true });
+  var redFoliage  = new THREE.MeshBasicMaterial({ map:TEX.foliage, transparent:true, color:0x8f1f1c, depthWrite:false, fog:true });
+
+  /* the ridgeline: a ring of billboarded masses behind the halls */
+  for (var i=0;i<58;i++){
+    var a = rand(-1.55, 1.55) - Math.PI/2;
+    var r = rand(46, 96);
+    var s = rand(9, 22);
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(s, s*1.25), darkFoliage);
+    m.position.set(Math.cos(a)*r, rand(1,7) + s*.42, Math.sin(a)*r - 20);
+    m.userData.billboard = true;
+    WORLD.add(m); BILLBOARDS.push(m);
+  }
+  /* cedars flanking the steps, close enough to read as trunks */
+  var CEDAR = new THREE.MeshStandardMaterial({ color:0x0b1216, roughness:1, metalness:0 });
+  for (var j=0;j<18;j++){
+    var side = j%2 ? 1 : -1;
+    var t = j/18;
+    var x = side * rand(17, 27), z = lerp(-4, TERRACE_Z, t) + rand(-2,2);
+    var h = rand(6,11);
+    var tr = new THREE.Mesh(new THREE.CylinderGeometry(.14,.30,h,7), CEDAR);
+    tr.position.set(x, h/2, z); WORLD.add(tr);
+    var cn = new THREE.Mesh(new THREE.ConeGeometry(rand(.9,1.6), rand(5,8.5), 7), CEDAR);
+    cn.position.set(x, h + 1.6, z); WORLD.add(cn);
+  }
+  /* maples: the red mass either side of the gate */
+  var spots = [[-8.6,0,-1.5],[9.2,0,-2.2],[-11.5,0,-8],[11.9,0,-9.4],[-7.4,TERRACE_Y,TERRACE_Z+1.5],[8.1,TERRACE_Y,TERRACE_Z+.5]];
+  for (var k=0;k<spots.length;k++){
+    var p = spots[k], hh = rand(3.4,5.2);
+    var trunk = new THREE.Mesh(new THREE.CylinderGeometry(.10,.22,hh,6), MAT.dark);
+    trunk.position.set(p[0], p[1]+hh/2, p[2]); WORLD.add(trunk);
+    for (var c=0;c<4;c++){
+      var sz = rand(2.6,4.4);
+      var fm = new THREE.Mesh(new THREE.PlaneGeometry(sz,sz*.85), redFoliage);
+      fm.position.set(p[0]+rand(-1.3,1.3), p[1]+hh+rand(-.4,1.5), p[2]+rand(-1,1));
+      fm.userData.billboard = true;
+      WORLD.add(fm); BILLBOARDS.push(fm);
+    }
+  }
+})();
+
+/* =====================================================================
+   ## JS SKY — dome, stars, and the vermilion moon (all outside the fog)
+   ===================================================================== */
+(function sky(){
+  var c = cv(4,256), x = c.getContext('2d');
+  var g = x.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,   '#03050a');
+  g.addColorStop(.40, '#0a0e17');
+  g.addColorStop(.62, '#141a24');
+  g.addColorStop(.80, '#1d2028');
+  g.addColorStop(1,   '#080b11');
+  x.fillStyle = g; x.fillRect(0,0,4,256);
+  var dome = new THREE.Mesh(new THREE.SphereGeometry(210, 32, 20), new THREE.MeshBasicMaterial({
+    map:toTex(c), side:THREE.BackSide, fog:false, depthWrite:false, toneMapped:false
+  }));
+  dome.renderOrder = -30; SKY.add(dome);
+
+  var N = 900, pos = new Float32Array(N*3), sz = new Float32Array(N);
+  for (var i=0;i<N;i++){
+    var a = Math.random()*Math.PI*2, e = Math.acos(rand(.05,1));
+    var r = 168;
+    pos[i*3]   = Math.sin(e)*Math.cos(a)*r;
+    pos[i*3+1] = Math.cos(e)*r*.9 + 12;
+    pos[i*3+2] = Math.sin(e)*Math.sin(a)*r;
+    sz[i] = rand(.4,1.5);
+  }
+  var sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  var stars = new THREE.Points(sg, new THREE.PointsMaterial({
+    map:TEX.glow, size:1.5, color:0xbcd0f0, transparent:true, opacity:.5,
+    blending:THREE.AdditiveBlending, depthWrite:false, fog:false, sizeAttenuation:true, toneMapped:false
+  }));
+  stars.renderOrder = -20; SKY.add(stars);
+
+  var halo = new THREE.Mesh(new THREE.PlaneGeometry(96,96), new THREE.MeshBasicMaterial({
+    map:TEX.glow, color:0xc4404f, transparent:true, opacity:.34,
+    blending:THREE.AdditiveBlending, depthWrite:false, fog:false, toneMapped:false
+  }));
+  halo.position.set(31, 42, -104); SKY.add(halo);
+
+  var moon = new THREE.Mesh(new THREE.PlaneGeometry(27,27), new THREE.MeshBasicMaterial({
+    map:TEX.moon, transparent:true, depthWrite:false, fog:false, toneMapped:false
+  }));
+  moon.position.set(31, 42, -104); SKY.add(moon);
+
+  /* a soft bank of mist across the middle distance */
+  for (var m=0;m<7;m++){
+    var mist = new THREE.Mesh(new THREE.PlaneGeometry(rand(50,90), rand(10,20)), new THREE.MeshBasicMaterial({
+      map:TEX.glow, color:0x1b2634, transparent:true, opacity:rand(.16,.34),
+      depthWrite:false, fog:false, toneMapped:false
+    }));
+    mist.position.set(rand(-30,30), rand(3,14), rand(-70,-34));
+    mist.renderOrder = -8; SKY.add(mist);
+  }
+})();
+
+/* =====================================================================
+   ## JS WORDMARK — four planes, sized from the hero frustum so the K and
+   the E fall off the edges of the frame exactly as the camera opens.
+   ===================================================================== */
+var WORD = new THREE.Group(); scene.add(WORD);
+var WORD_MATS = [];
+var WORD_D = 7.62;   /* eye to letter plane along the hero view axis */
+
+/* The four planes are sized from the hero frustum every time it changes:
+   the letter height is a fixed share of the frame, and the gap between
+   centres a fixed share of its width, so K and E fall off the edges on a
+   wide screen and close up on a narrow one instead of vanishing. */
+function layoutWord(){
+  var n = WORD.children.length;
+  if (!n) return;
+  var half = Math.tan(fitFov(CAM[0].fov) * Math.PI / 360) * WORD_D;
+  var span = Math.max(half * (W/H) * 1.80 / (n-1), .42);
+  var size = Math.min(half * .84, span * 1.62);
+  for (var i=0;i<n;i++){
+    var m = WORD.children[i];
+    m.scale.setScalar(size / 2.2);
+    m.position.x = (i - (n-1)/2) * span;
+  }
+}
+
+function buildWord(){
+  var letters = ['Y','U','K','A','I'], SPAN = 2.34, Z = 6.0, Y = 4.56, PLANE = 2.2;
+  for (var i=0;i<letters.length;i++){
+    var S = 512, c = cv(S,S), x = c.getContext('2d');
+    var cap = S*.52, px = cap/.715;
+    x.font = '500 ' + px.toFixed(0) + 'px Onest, "Helvetica Neue", Helvetica, Arial, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    x.fillStyle = '#eaf1ea';
+    x.fillText(letters[i], S/2, S/2 + cap/2);
+    var mat = new THREE.MeshBasicMaterial({
+      map:toTex(c), transparent:true, depthWrite:false, fog:false, toneMapped:false, opacity:1
+    });
+    WORD_MATS.push(mat);
+    var pl = new THREE.Mesh(new THREE.PlaneGeometry(PLANE, PLANE), mat);
+    pl.position.set((i-1.5)*SPAN, Y, Z);
+    pl.renderOrder = 6;
+    WORD.add(pl);
+  }
+  layoutWord();
+}
+if (doc.fonts && doc.fonts.ready){
+  var wordTimer = setTimeout(buildWord, 1400);
+  doc.fonts.ready.then(function(){ if (!WORD.children.length){ clearTimeout(wordTimer); buildWord(); } });
+} else buildWord();
+
+/* =====================================================================
+   ## JS WEATHER — maple leaves, rain, embers, sparks
+   ===================================================================== */
+var DUMMY = new THREE.Object3D();
+
+/* --- falling maple, tumbling on three axes at once --- */
+var LEAF_N = REDUCED ? 40 : 170;
+var leafMesh = new THREE.InstancedMesh(
+  new THREE.PlaneGeometry(.46,.46),
+  new THREE.MeshBasicMaterial({ map:TEX.leaf, transparent:true, alphaTest:.28, side:THREE.DoubleSide, fog:true, toneMapped:false }),
+  LEAF_N
+);
+leafMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(leafMesh);
+var LEAVES = [];
+for (var l=0;l<LEAF_N;l++){
+  LEAVES.push({
+    x:rand(-26,26), y:rand(0,24), z:rand(-34,15),
+    fall:rand(.55,1.5), sway:rand(.5,1.6), amp:rand(.5,1.7), ph:rand(0,6.28),
+    rx:rand(0,6.28), ry:rand(0,6.28), rz:rand(0,6.28),
+    sx:rand(-1.4,1.4), sy:rand(-1.9,1.9), sz:rand(-1.2,1.2),
+    sc:rand(.55,1.5)
+  });
+}
+
+/* --- rain: short segments, slanted with the valley wind --- */
+var RAIN_N = REDUCED ? 0 : 1300;
+var rainPos = new Float32Array(RAIN_N*6), RAINS = [];
+for (var r0=0;r0<RAIN_N;r0++){
+  RAINS.push({ x:rand(-34,34), y:rand(0,34), z:rand(-44,18), v:rand(15,27), len:rand(.3,.85) });
+}
+var rainGeo = new THREE.BufferGeometry();
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos,3));
+var rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({
+  color:0x9fb8dc, transparent:true, opacity:.15, fog:true
+}));
+if (RAIN_N) scene.add(rain);
+
+/* --- embers rising off the lanterns, and the cold sparks by the hall --- */
+function pointField(n, col, size, opacity, twinkle){
+  var p = new Float32Array(n*3), g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(p,3));
+  var c = null;
+  if (twinkle){
+    c = new Float32Array(n*3);
+    for (var k=0;k<n*3;k++) c[k] = 1;
+    g.setAttribute('color', new THREE.BufferAttribute(c,3));
+  }
+  var m = new THREE.Points(g, new THREE.PointsMaterial({
+    map:TEX.glow, size:size, color:col, transparent:true, opacity:opacity,
+    vertexColors:!!twinkle,
+    blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true, fog:true, toneMapped:false
+  }));
+  scene.add(m);
+  return { mesh:m, arr:p, col:c, n:n, state:[] };
+}
+var EMB = pointField(REDUCED?50:200, 0xffc27a, .42, .85);
+for (var e0=0;e0<EMB.n;e0++) EMB.state.push({ x:rand(-16,16), y:rand(0,12), z:rand(-30,10), v:rand(.16,.6), ph:rand(0,6.28), am:rand(.2,1.1) });
+var SPK = pointField(REDUCED?90:520, 0xeaf4ff, .34, .95, true);
+for (var s0=0;s0<SPK.n;s0++) SPK.state.push({ x:rand(-26,26), y:rand(.5,19), z:rand(-40,10), v:rand(.05,.30), ph:rand(0,6.28), am:rand(.3,1.8), tw:rand(.7,2.1) });
+
+function stepWeather(t, dt){
+  var i, s;
+  for (i=0;i<LEAF_N;i++){
+    s = LEAVES[i];
+    s.y -= s.fall*dt;
+    if (s.y < -1.5){ s.y = rand(18,26); s.x = rand(-26,26); s.z = rand(-34,15); }
+    s.rx += s.sx*dt; s.ry += s.sy*dt; s.rz += s.sz*dt;
+    DUMMY.position.set(
+      s.x + Math.sin(t*s.sway + s.ph)*s.amp,
+      s.y,
+      s.z + Math.cos(t*s.sway*.7 + s.ph)*s.amp*.5
+    );
+    DUMMY.rotation.set(s.rx, s.ry, s.rz);
+    DUMMY.scale.setScalar(s.sc);
+    DUMMY.updateMatrix();
+    leafMesh.setMatrixAt(i, DUMMY.matrix);
+  }
+  leafMesh.instanceMatrix.needsUpdate = true;
+
+  for (i=0;i<RAIN_N;i++){
+    s = RAINS[i];
+    s.y -= s.v*dt;
+    if (s.y < -1){ s.y = rand(26,38); s.x = rand(-34,34); s.z = rand(-44,18); }
+    var o = i*6;
+    rainPos[o]   = s.x;            rainPos[o+1] = s.y;          rainPos[o+2] = s.z;
+    rainPos[o+3] = s.x - s.len*.24; rainPos[o+4] = s.y - s.len*3.2; rainPos[o+5] = s.z;
+  }
+  if (RAIN_N) rainGeo.attributes.position.needsUpdate = true;
+
+  for (i=0;i<EMB.n;i++){
+    s = EMB.state[i]; s.y += s.v*dt;
+    if (s.y > 15){ s.y = rand(-.5,1); s.x = rand(-16,16); s.z = rand(-30,10); }
+    EMB.arr[i*3]   = s.x + Math.sin(t*.5 + s.ph)*s.am;
+    EMB.arr[i*3+1] = s.y;
+    EMB.arr[i*3+2] = s.z + Math.cos(t*.38 + s.ph)*s.am*.6;
+  }
+  EMB.mesh.geometry.attributes.position.needsUpdate = true;
+
+  for (i=0;i<SPK.n;i++){
+    s = SPK.state[i]; s.y += s.v*dt*Math.sin(t*.3+s.ph);
+    SPK.arr[i*3]   = s.x + Math.sin(t*.22 + s.ph)*s.am;
+    SPK.arr[i*3+1] = s.y;
+    SPK.arr[i*3+2] = s.z + Math.cos(t*.19 + s.ph)*s.am;
+    /* each spark carries its own brightness, so the field blinks rather
+       than pulsing as one sheet */
+    var f = .18 + .82 * Math.pow(.5 + .5*Math.sin(t*s.tw + s.ph*3.1), 2.2);
+    SPK.col[i*3] = SPK.col[i*3+1] = SPK.col[i*3+2] = f;
+  }
+  SPK.mesh.geometry.attributes.position.needsUpdate = true;
+  SPK.mesh.geometry.attributes.color.needsUpdate = true;
+}
+
+/* =====================================================================
+   ## JS CAMERA RIG — six stations, joined by a Catmull-Rom pair (one for
+   the eye, one for the target) so the walk never snaps between chapters.
+   ===================================================================== */
+var CAM = [
+  { p:[  0.0, 4.05, 13.6 ], t:[  0.0,  6.60, -18.0 ], fov:36 },  /* 00 hero        */
+  { p:[ -5.6, 2.35, 11.6 ], t:[  1.2,  5.60, -14.0 ], fov:48 },  /* 01 the sanmon  */
+  { p:[  1.6, 3.80,   4.6 ], t:[ -0.6,  7.50, -22.0 ], fov:40 },  /* 02 gardens     */
+  { p:[  6.2, 2.60,   1.2 ], t:[ -2.2,  7.20, -20.0 ], fov:46 },  /* 03 craft       */
+  { p:[  0.0, 6.40,  15.5 ], t:[  0.0,  9.60, -32.0 ], fov:40 }, /* 04 afterlight  */
+  { p:[  0.0, 13.5,   7.0 ], t:[  0.0,  2.20, -28.0 ], fov:46 }  /* 05 colophon    */
+];
+var V3 = function(a){ return new THREE.Vector3(a[0],a[1],a[2]); };
+var curveP = new THREE.CatmullRomCurve3(CAM.map(function(c){ return V3(c.p); }), false, 'catmullrom', .42);
+var curveT = new THREE.CatmullRomCurve3(CAM.map(function(c){ return V3(c.t); }), false, 'catmullrom', .42);
+var _p = new THREE.Vector3(), _t = new THREE.Vector3();
+
+/* narrow viewports lose the wordmark off the sides, so open the lens up */
+function fitFov(fov){
+  var a = W/H, ref = 1.72;
+  return a >= ref ? fov : fov * (1 + (ref-a)/ref * .52);
+}
+
+var scrollP = 0, scrollTarget = 0, mx = 0, my = 0, mxT = 0, myT = 0, FREEZE = null;
+
+function driveCamera(){
+  var N = CAM.length - 1;
+  var f = clamp(scrollP,0,1) * N;
+  var i = clamp(Math.floor(f), 0, N-1);
+  var u = f - i;
+  curveP.getPoint(clamp(scrollP,0,1), _p);
+  curveT.getPoint(clamp(scrollP,0,1), _t);
+  var fov = fitFov(lerp(CAM[i].fov, CAM[i+1].fov, smooth(u)));
+
+  /* pointer parallax: a hand-held drift, strongest at the top of the page */
+  var drift = 1 - clamp(scrollP*1.6, 0, .78);
+  _p.x += mx * 1.5 * drift;
+  _p.y += my * 0.85 * drift;
+  _t.x -= mx * 0.9 * drift;
+  _t.y -= my * 0.5 * drift;
+
+  camera.position.copy(_p);
+  camera.lookAt(_t);
+  if (Math.abs(camera.fov - fov) > 1e-3){ camera.fov = fov; camera.updateProjectionMatrix(); }
+
+  /* the wordmark holds the hero, then dissolves as the gate takes over */
+  var wo = 1 - smooth(clamp((scrollP - .012) / .10, 0, 1)) * .94;
+  wo *= 1 - smooth(clamp((scrollP - .13) / .09, 0, 1));
+  for (var k=0;k<WORD_MATS.length;k++) WORD_MATS[k].opacity = wo;
+  WORD.visible = wo > .004;
+
+  /* the fog thickens as you climb, so the far halls fall away */
+  scene.fog.density = lerp(.0168, .0224, smooth(clamp(scrollP,0,1)));
+  hallLight.intensity = 3.5 + Math.sin(performance.now()*.0011)*.24;
+}
+
+/* =====================================================================
+   ## JS CARD VIEWS — the gallery frames and the hero peek are not images.
+   Each one is a second camera on the same sanctuary, scissored into the
+   rectangle the DOM element happens to occupy this frame.
+   ===================================================================== */
+var VIEW_DEFS = [
+  { p:[-2.0, 1.60, -2.0], t:[ 0.0, 10.0, -34.0], fov:40 },  /* 0 the long climb */
+  { p:[ 4.2, 2.90, -9.5], t:[ 6.4,  2.90, -14.4], fov:40 }, /* 1 lantern court  */
+  { p:[ 6.0, 1.50,  6.0], t:[26.0, 46.00,-100.0], fov:32 }, /* 2 the wet court  */
+  { p:[ 0.6, 3.40,-12.0], t:[ 0.0, 12.0, -40.0], fov:26 }   /* 3 hero peek      */
+];
+var VIEWS = [];
+$$('[data-view]').forEach(function(el){
+  var d = VIEW_DEFS[+el.getAttribute('data-view')];
+  if (!d) return;
+  var frame = el.querySelector('[data-frame]') || el;
+  var c = new THREE.PerspectiveCamera(d.fov, 1.6, .3, 220);
+  c.position.set(d.p[0], d.p[1], d.p[2]);
+  c.userData = { home:c.position.clone(), look:V3(d.t), push:0, want:0, ph:Math.random()*6.28 };
+  c.lookAt(c.userData.look);
+  VIEWS.push({ cam:c, el:frame, host:el });
+  el.addEventListener('pointerenter', function(){ c.userData.want = 1; });
+  el.addEventListener('pointerleave', function(){ c.userData.want = 0; });
+});
+
+function renderViews(t){
+  if (!VIEWS.length) return;
+  var vh = win.innerHeight, vw = win.innerWidth;
+  renderer.setScissorTest(true);
+  for (var i=0;i<VIEWS.length;i++){
+    var v = VIEWS[i], r = v.el.getBoundingClientRect();
+    if (r.bottom < -40 || r.top > vh + 40 || r.width < 8 || r.height < 8) continue;
+    var u = v.cam.userData;
+    u.push += (u.want - u.push) * .07;
+    var fwd = u.look.clone().sub(u.home).normalize();
+    v.cam.position.copy(u.home)
+      .addScaledVector(fwd, u.push * 1.5)
+      .add(new THREE.Vector3(Math.sin(t*.22+u.ph)*.22, Math.cos(t*.17+u.ph)*.12, 0));
+    v.cam.lookAt(u.look);
+    v.cam.aspect = r.width / r.height;
+    v.cam.updateProjectionMatrix();
+
+    /* setViewport/setScissor take CSS pixels; three applies the pixel ratio */
+    var x = r.left, y = vh - r.bottom, w = r.width, h = r.height;
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    renderer.clear(true, true, false);
+    renderer.render(scene, v.cam);
+  }
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, vw, vh);
+}
+
+/* =====================================================================
+   ## JS FOREGROUND — the near plane belongs to the window, not the page.
+
+   A stage sits inert inside its own chapter. When that chapter takes the
+   viewport its .fg is lifted into #fg-sky and switched to position:fixed at
+   bottom:0, so the plates hold the foot of the frame while the document
+   scrolls behind them. The outgoing stage dissolves downward and is parked
+   back where it came from. The pointer writes a single --lean on the host;
+   each layer multiplies it by its own --leanK, and the idle bend and swing
+   are CSS on the artwork itself.
+   ===================================================================== */
+function wireForeground(){
+  var sky = $('#fg-sky');
+  var pairs = $$('.fg').map(function(stage){
+    return { stage:stage, section:stage.closest('.hero, .sec, .foot') };
+  }).filter(function(pr){ return pr.section && sky; });
+  if (!pairs.length) return;
+
+  var ratios = new Map(), homes = new Map(), timers = new Map(), active = null;
+  pairs.forEach(function(pr){ ratios.set(pr.section, 0); homes.set(pr.stage, pr.section); });
+
+  function lift(stage){
+    if (stage.parentNode === sky) return;
+    sky.appendChild(stage);
+    /* a re-inserted node has no previous computed style, so the entrance would
+       land already finished; resolve the parked state in its new parent first */
+    void stage.offsetWidth;
+  }
+  function park(stage){
+    var home = homes.get(stage);
+    if (home && stage.parentNode !== home) home.insertBefore(stage, home.firstChild);
+  }
+  function retire(stage){
+    if (!stage || stage === active) return;
+    if (timers.has(stage)) clearTimeout(timers.get(stage));
+    stage.classList.remove('fg-active');
+    if (REDUCED){ park(stage); return; }
+    stage.classList.add('fg-retiring');
+    timers.set(stage, setTimeout(function(){
+      stage.classList.remove('fg-retiring');
+      timers.delete(stage);
+      park(stage);
+    }, 820));
+  }
+  function activate(stage){
+    if (!stage || stage === active) return;
+    if (timers.has(stage)) clearTimeout(timers.get(stage));
+    stage.classList.remove('fg-retiring');
+    lift(stage);
+    stage.classList.add('fg-active');
+    var prior = active;
+    active = stage;
+    retire(prior);
+  }
+
+  /* Which chapter owns the near plane is decided from geometry, not from an
+     IntersectionObserver: the observer's rootMargin leaves a band where no
+     section qualifies and the foot of the frame empties out mid-scroll. The
+     largest visible share of the window always wins, so a stage is live from
+     the first pixel of its chapter to the last. */
+  var lastY = -1, lastH = -1;
+  function pickStage(){
+    var vh = win.innerHeight, best = null, bestScore = 0;
+    for (var i=0;i<pairs.length;i++){
+      var r = pairs[i].section.getBoundingClientRect();
+      var vis = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+      if (vis <= 0) continue;
+      var score = vis / Math.max(1, Math.min(r.height, vh));
+      if (score > bestScore){ bestScore = score; best = pairs[i].stage; }
+    }
+    if (best) activate(best);
+    else if (active){ var prior = active; active = null; retire(prior); }
+  }
+  function watch(){
+    var y = win.scrollY, h = win.innerHeight;
+    if (y !== lastY || h !== lastH){ lastY = y; lastH = h; pickStage(); }
+  }
+  win.addEventListener('scroll', watch, {passive:true});
+  win.addEventListener('resize', watch, {passive:true});
+  win.addEventListener('load', pickStage);
+  pickStage();
+
+  /* the pointer's pull — one property write, every layer reads it */
+  var lean = 0, leanT = 0;
+  win.addEventListener('pointermove', function(e){
+    if (e.pointerType === 'touch') return;
+    leanT = (e.clientX / win.innerWidth - .5) * 34;
+  }, {passive:true});
+  (function drift(){
+    lean += (leanT - lean) * .05;
+    sky.style.setProperty('--lean', lean.toFixed(2) + 'px');
+    watch();
+    requestAnimationFrame(drift);
+  })();
+}
+
+/* =====================================================================
+   ## JS BILLBOARDS — trees and blooms turn to face the walker, upright
+   ===================================================================== */
+function faceCamera(){
+  for (var i=0;i<BILLBOARDS.length;i++){
+    var m = BILLBOARDS[i];
+    m.rotation.y = Math.atan2(camera.position.x - m.position.x, camera.position.z - m.position.z);
+  }
+}
+
+/* =====================================================================
+   ## JS LOOP
+   ===================================================================== */
+var last = performance.now(), t0 = last;
+function frame(now){
+  tick(now);
+  requestAnimationFrame(frame);
+}
+function tick(now){
+  var dt = Math.min((now - last)/1000, .05); last = now;
+  var t = (now - t0)/1000;
+
+  scrollP += (scrollTarget - scrollP) * (REDUCED ? 1 : .085);
+  mx += (mxT - mx) * .055;
+  my += (myT - my) * .055;
+
+  driveCamera();
+  faceCamera();
+  stepWeather(t, dt);
+
+  renderer.setViewport(0, 0, W, H);
+  renderer.setScissorTest(false);
+  renderer.clear(true, true, false);
+  renderer.render(scene, camera);
+  renderViews(t);
+}
+
+/* =====================================================================
+   ## JS RESIZE
+   ===================================================================== */
+function onResize(){
+  W = win.innerWidth; H = win.innerHeight;
+  DPR = Math.min(win.devicePixelRatio||1, 1.85);
+  renderer.setPixelRatio(DPR);
+  renderer.setSize(W,H,false);
+  camera.aspect = W/H;
+  camera.updateProjectionMatrix();
+  layoutWord();
+  measure();
+}
+win.addEventListener('resize', onResize, {passive:true});
+win.addEventListener('orientationchange', onResize, {passive:true});
+win.addEventListener('load', onResize);
+if (win.ResizeObserver){
+  var ro = new ResizeObserver(function(){
+    if (win.innerWidth !== W || win.innerHeight !== H) onResize();
+  });
+  ro.observe(doc.documentElement);
+}
+
+win.addEventListener('pointermove', function(e){
+  if (e.pointerType === 'touch') return;
+  mxT = (e.clientX / W - .5) * 2;
+  myT = (e.clientY / H - .5) * 2;
+}, {passive:true});
+
+/* a handle for tuning the walk from the console */
+win.__yukai = win.__kage = {
+  THREE:THREE, scene:scene, camera:camera, renderer:renderer, WORLD:WORLD, WORD:WORD,
+  CAM:CAM, curveP:curveP, curveT:curveT, tick:tick,
+  state:function(){ return { p:scrollP, target:scrollTarget, fov:camera.fov,
+    pos:camera.position.toArray(), sections:SECTIONS.map(function(s){return [s.el.id, s.top|0];}) }; }
+};
+
+bootDOM(1);
+requestAnimationFrame(frame);
+
+/* =====================================================================
+   ## JS DOM — scroll driver, reveals, rail, nav, chips, preloader.
+   Runs with or without WebGL; the flag only decides whether the scroll
+   position also has a camera hanging off it.
+   ===================================================================== */
+var SECTIONS = [], docMax = 1;
+function measure(){
+  SECTIONS = $$('[data-cam]').map(function(el){
+    var r = el.getBoundingClientRect(), top = r.top + win.scrollY;
+    return { el:el, top:top, h:r.height, mid:top + r.height/2 };
+  });
+  docMax = Math.max(1, doc.documentElement.scrollHeight - win.innerHeight);
+}
+
+/* Scroll maps to the camera by chapter, not by raw page height: when a
+   section's top reaches the top of the viewport the rig is exactly on that
+   station, so the walk and the copy stay in step at any window size. */
+function camProgress(y){
+  var n = SECTIONS.length;
+  if (n < 2) return clamp(y/docMax, 0, 1);
+  if (y <= SECTIONS[0].top) return 0;
+  for (var i=0;i<n-1;i++){
+    var a = SECTIONS[i].top, b = SECTIONS[i+1].top;
+    if (y < b) return (i + (y-a)/Math.max(1,b-a)) / (n-1);
+  }
+  var lastTop = SECTIONS[n-1].top;
+  return clamp((n-2 + 1 + (y-lastTop)/Math.max(1, docMax-lastTop)) / (n-1), 0, 1);
+}
+
+function bootDOM(gl){
+
+  measure();
+  win.addEventListener('load', measure);
+  setTimeout(measure, 900);
+
+  /* ---------------------------------------------------- scroll driver */
+  var rail = $('#rail'), navEl = $('#nav'), links = $$('.nav-link'), chips = $$('.chip');
+  var ids = SECTIONS.map(function(s){ return s.el.id; });
+  SECTIONS.forEach(function(){ rail.appendChild(doc.createElement('i')); });
+  var dots = $$('i', rail), lastIdx = -1;
+
+  function onScroll(){
+    var y = win.scrollY;
+    scrollTarget = (FREEZE == null) ? camProgress(y) : FREEZE;
+    if (!gl) scrollP = scrollTarget;
+    navEl.classList.toggle('is-stuck', y > 40);
+
+    /* which chapter owns the middle of the screen */
+    var mid = y + win.innerHeight*.42, idx = 0;
+    for (var i=0;i<SECTIONS.length;i++) if (mid >= SECTIONS[i].top) idx = i;
+    if (idx !== lastIdx){
+      lastIdx = idx;
+      dots.forEach(function(d,i){ d.classList.toggle('on', i===idx); });
+      chips.forEach(function(c,i){ c.classList.toggle('on', i===idx-1); });
+      links.forEach(function(a){
+        a.classList.toggle('is-cur', a.getAttribute('href') === '#'+ids[idx]);
+      });
+    }
+  }
+  win.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  /* ---------------------------------------------------- reveals */
+  var io = new IntersectionObserver(function(en){
+    en.forEach(function(e){
+      if (e.isIntersecting){ e.target.classList.add('is-in'); io.unobserve(e.target); }
+    });
+  }, { rootMargin:'-8% 0px -12% 0px', threshold:.01 });
+  $$('[data-rv], .sec, .hero, .foot, .display').forEach(function(el){ io.observe(el); });
+
+  /* ---------------------------------------------------- smooth anchors */
+  function goTo(target){
+    var el = typeof target === 'string' ? doc.querySelector(target) : target;
+    if (!el) return;
+    var to = el.getBoundingClientRect().top + win.scrollY - (el.id === 'top' ? 0 : 10);
+    var from = win.scrollY, d = to - from, st = performance.now(), dur = Math.min(1500, 420 + Math.abs(d)*.32);
+    (function step(now){
+      var k = clamp((now - st)/dur, 0, 1);
+      var e = k<.5 ? 4*k*k*k : 1 - Math.pow(-2*k+2,3)/2;
+      win.scrollTo(0, from + d*e);
+      if (k < 1) requestAnimationFrame(step);
+    })(st);
+  }
+  doc.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    e.preventDefault();
+    $('#navlinks').classList.remove('open');
+    $('#burger').classList.remove('on');
+    doc.body.classList.remove('is-locked');
+    goTo(a.getAttribute('href'));
+  });
+  chips.forEach(function(c,i){
+    c.addEventListener('click', function(){ goTo('#' + (ids[i+1] || 'gate')); });
+  });
+
+  /* ---------------------------------------------------- burger */
+  var burger = $('#burger'), menu = $('#navlinks');
+  burger.addEventListener('click', function(){
+    var open = menu.classList.toggle('open');
+    burger.classList.toggle('on', open);
+    doc.body.classList.toggle('is-locked', open);
+  });
+
+  /* ---------------------------------------------------- foreground */
+  wireForeground();
+
+  /* ---------------------------------------------------- preloader */
+  var pre = $('#pre'), fill = $('#pre-fill'), pct = $('#pre-pct');
+  var imgs = $$('.fg img'), done = 0, total = imgs.length + 1, shown = 0;
+  function bump(){
+    done++;
+    var target = Math.round(done/total*100);
+    if (target > shown) shown = target;
+    fill.style.right = (100 - shown) + '%';
+    pct.textContent = shown;
+  }
+  imgs.forEach(function(im){
+    if (im.complete) bump();
+    else { im.addEventListener('load', bump); im.addEventListener('error', bump); }
+  });
+  var closed = false;
+  function finish(){
+    if (closed) return; closed = true;
+    shown = 100; fill.style.right = '0%'; pct.textContent = '100';
+    setTimeout(function(){
+      pre.classList.add('gone');
+      doc.body.classList.add('is-ready');
+      measure(); onScroll();
+      $('#hero').classList.add('is-in');
+      $$('.hero [data-rv], .hero .display').forEach(function(el){ el.classList.add('is-in'); });
+    }, 380);
+  }
+  win.addEventListener('load', function(){ bump(); setTimeout(finish, 260); });
+  setTimeout(finish, 4200);
+
+  /* ?solo=<id> shows one chapter on its own and ?p=0.6 pins the rig where
+     that chapter would put it — both exist so a single frame can be checked
+     without scrolling the document. */
+  var solo = (location.search.match(/solo=([\w-]+)/)||[])[1];
+  if (solo) $$('[data-cam]').forEach(function(el){ if (el.id !== solo) el.style.display = 'none'; });
+  var pq = (location.search.match(/[?&]p=([\d.]+)/)||[])[1];
+  if (pq != null){ FREEZE = clamp(parseFloat(pq),0,1); scrollTarget = scrollP = FREEZE; }
+
+  /* ?goto=gate lands directly on a chapter, for checking a single frame */
+  var g = (location.search.match(/goto=([\w-]+)/)||[])[1];
+  if (g) setTimeout(function(){
+    var el = doc.getElementById(g); if (!el) return;
+    measure();
+    win.scrollTo(0, el.getBoundingClientRect().top + win.scrollY);
+    onScroll(); scrollP = scrollTarget;
+  }, 220);
+}
+
+})();
+</script>
+</body>
+</html>
